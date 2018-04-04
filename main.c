@@ -471,6 +471,171 @@ typedef struct
 
 
 //=============================================================================
+// Beeper
+//
+
+typedef struct
+{
+    __IO uint8_t CSR;   // Control/status register
+} stm8_beep_t;
+
+#define BEEP_BaseAddress        0x50F3
+#define BEEP                    ((stm8_beep_t *)BEEP_BaseAddress)
+
+#define BEEP_CSR_SEL_MASK       0xC0        // Selection
+#define BEEP_CSR_SEL_1KHZ       0x00
+#define BEEP_CSR_SEL_2KHZ       0x40
+#define BEEP_CSR_SEL_4KHZ       0x80
+
+#define BEEP_CSR_EN_MASK        0x20        // Enable
+#define BEEP_CSR_EN_DISABLE     0x00
+#define BEEP_CSR_EN_ENABLE      0x20
+
+#define BEEP_CSR_DIV_MASK       0x1F        // Prescaler divider
+#define BEEP_CSR_DIV_2          0x00
+#define BEEP_CSR_DIV_3          0x01
+#define BEEP_CSR_DIV_4          0x02
+#define BEEP_CSR_DIV_5          0x03
+#define BEEP_CSR_DIV_6          0x04
+#define BEEP_CSR_DIV_7          0x05
+#define BEEP_CSR_DIV_8          0x06
+#define BEEP_CSR_DIV_9          0x07
+#define BEEP_CSR_DIV_10         0x08
+#define BEEP_CSR_DIV_11         0x09
+#define BEEP_CSR_DIV_12         0x0A
+#define BEEP_CSR_DIV_13         0x0B
+#define BEEP_CSR_DIV_14         0x0C
+#define BEEP_CSR_DIV_15         0x0D
+#define BEEP_CSR_DIV_16         0x0E
+#define BEEP_CSR_DIV_17         0x0F
+#define BEEP_CSR_DIV_18         0x10
+#define BEEP_CSR_DIV_19         0x11
+#define BEEP_CSR_DIV_20         0x12
+#define BEEP_CSR_DIV_21         0x13
+#define BEEP_CSR_DIV_22         0x14
+#define BEEP_CSR_DIV_23         0x15
+#define BEEP_CSR_DIV_24         0x16
+#define BEEP_CSR_DIV_25         0x17
+#define BEEP_CSR_DIV_26         0x18
+#define BEEP_CSR_DIV_27         0x19
+#define BEEP_CSR_DIV_28         0x1A
+#define BEEP_CSR_DIV_29         0x1B
+#define BEEP_CSR_DIV_30         0x1C
+#define BEEP_CSR_DIV_31         0x1D
+#define BEEP_CSR_DIV_32         0x1E
+#define BEEP_CSR_DIV_RESET      0x1F        // Reset value, do not set
+
+//=============================================================================
+// Auto Wakeup
+//
+
+typedef struct
+{
+    __IO uint8_t CSR;   // Control/status register
+    __IO uint8_t APR;   // Asynchronous prescaler register
+    __IO uint8_t TBR;   // Timebase selection register
+} stm8_awu_t;
+
+#define AWU_BaseAddress         0x50F3
+#define AWU                     ((stm8_awu_t *)AWU_BaseAddress)
+
+#define AWU_CSR_AWUF_MASK       0x20        // Flag (read clears)
+#define AWU_CSR_AWUF_NONE       0x00
+#define AWU_CSR_AWUF_OCCURRED   0x20
+
+#define AWU_CSR_AWEN_MASK       0x10        // Enable
+#define AWU_CSR_AWEN_DISABLE    0x00
+#define AWU_CSR_AWEN_ENABLE     0x10
+
+#define AWU_CSR_MSR_MASK        0x01        // Measurement enable
+#define AWU_CSR_MSR_DISABLE     0x00
+#define AWU_CSR_MSR_ENABLE      0x01
+
+#define AWU_APR_DIV_MASK        0x3F        // Asynchronous prescaler divider
+#define AWU_APR_DIV_2           0x00
+#define AWU_APR_DIV_3           0x01
+#define AWU_APR_DIV_4           0x02
+#define AWU_APR_DIV_5           0x03
+#define AWU_APR_DIV_6           0x04
+#define AWU_APR_DIV_7           0x05
+#define AWU_APR_DIV_8           0x06
+#define AWU_APR_DIV_9           0x07
+#define AWU_APR_DIV_10          0x08
+#define AWU_APR_DIV_11          0x09
+#define AWU_APR_DIV_12          0x0A
+#define AWU_APR_DIV_13          0x0B
+#define AWU_APR_DIV_14          0x0C
+#define AWU_APR_DIV_15          0x0D
+#define AWU_APR_DIV_16          0x0E
+#define AWU_APR_DIV_17          0x0F
+#define AWU_APR_DIV_18          0x10
+#define AWU_APR_DIV_19          0x11
+#define AWU_APR_DIV_20          0x12
+#define AWU_APR_DIV_21          0x13
+#define AWU_APR_DIV_22          0x14
+#define AWU_APR_DIV_23          0x15
+#define AWU_APR_DIV_24          0x16
+#define AWU_APR_DIV_25          0x17
+#define AWU_APR_DIV_26          0x18
+#define AWU_APR_DIV_27          0x19
+#define AWU_APR_DIV_28          0x1A
+#define AWU_APR_DIV_29          0x1B
+#define AWU_APR_DIV_30          0x1C
+#define AWU_APR_DIV_31          0x1D
+#define AWU_APR_DIV_32          0x1E
+#define AWU_APR_DIV_33          0x1F
+#define AWU_APR_DIV_34          0x20
+#define AWU_APR_DIV_35          0x21
+#define AWU_APR_DIV_36          0x22
+#define AWU_APR_DIV_37          0x23
+#define AWU_APR_DIV_38          0x24
+#define AWU_APR_DIV_39          0x25
+#define AWU_APR_DIV_40          0x26
+#define AWU_APR_DIV_41          0x27
+#define AWU_APR_DIV_42          0x28
+#define AWU_APR_DIV_43          0x29
+#define AWU_APR_DIV_44          0x2A
+#define AWU_APR_DIV_45          0x2B
+#define AWU_APR_DIV_46          0x2C
+#define AWU_APR_DIV_47          0x2D
+#define AWU_APR_DIV_48          0x2E
+#define AWU_APR_DIV_49          0x2F
+#define AWU_APR_DIV_50          0x30
+#define AWU_APR_DIV_51          0x31
+#define AWU_APR_DIV_52          0x32
+#define AWU_APR_DIV_53          0x33
+#define AWU_APR_DIV_54          0x34
+#define AWU_APR_DIV_55          0x35
+#define AWU_APR_DIV_56          0x36
+#define AWU_APR_DIV_57          0x37
+#define AWU_APR_DIV_58          0x38
+#define AWU_APR_DIV_59          0x39
+#define AWU_APR_DIV_60          0x3A
+#define AWU_APR_DIV_61          0x3B
+#define AWU_APR_DIV_62          0x3C
+#define AWU_APR_DIV_63          0x3D
+#define AWU_APR_DIV_64          0x3E
+
+#define AWU_TBR_MASK            0x0F        // Timebase selection ((factor x APR)/lsi)
+#define AWU_TBR_NONE            0x00
+#define AWU_TBR_1               0x01        // 0.015625 ms - 0.5 ms
+#define AWU_TBR_2               0x20        // 0.5 ms - 1.0 ms
+#define AWU_TBR_4               0x03        // 1 ms - 2 ms
+#define AWU_TBR_8               0x04        // 2 ms - 4 ms
+#define AWU_TBR_16              0x05        // 4 ms - 8 ms
+#define AWU_TBR_32              0x06        // 8 ms - 16 ms
+#define AWU_TBR_64              0x07        // 16 ms - 32 ms
+#define AWU_TBR_128             0x08        // 32 ms - 64 ms
+#define AWU_TBR_256             0x09        // 64 ms - 128 ms
+#define AWU_TBR_512             0x0A        // 128 ms - 256 ms
+#define AWU_TBR_1024            0x0B        // 256 ms - 512 ms
+#define AWU_TBR_2048            0x0C        // 512 ms - 1.024 s
+#define AWU_TBR_4096            0x0D        // 1.024 s - 2.048 s
+#define AWU_TBR_5x2048          0x0E        // 2.080 s - 5.120 s
+#define AWU_TBR_30x2048         0x0F        // 5.280 s - 30.720 s
+
+
+//=============================================================================
 // Timers
 //
 
@@ -1603,7 +1768,7 @@ void UART2_RX_IRQHandler(void) __interrupt(21)
 //
 
 #define TIM1_PERIOD         320
-#define TIM1_CH3_DUTY       ((TIM1_PERIOD * 0) / 100)
+#define TIM1_CH3_DUTY       ((uint16_t)((TIM1_PERIOD * 0) / 100))
 
 //-----------------------------------------------------------------------------
 // Set the auto-reload value
@@ -1687,6 +1852,138 @@ void Tim4_Config(uint8_t prescaler, uint8_t reload)
     TIM4->CNTR = 0;
     TIM4->CR1 = (TIM4->CR1 & ~(TIM4_CR1_ARPE_MASK | TIM4_CR1_CEN_MASK)) | TIM4_CR1_ARPE_ENABLE | TIM4_CR1_CEN_ENABLE;
 }
+
+//=============================================================================
+// Beeper functions
+//
+
+typedef enum
+{
+    BEEP_1KHZ = 0x00,
+    BEEP_2KHZ = 0x40,
+    BEEP_4KHZ = 0x80
+} beep_freq_t;
+
+//=============================================================================
+// Set frequency of beep
+//
+void Beep_SetFrequency(beep_freq_t freq)
+{
+    if ((BEEP->CSR & BEEP_CSR_DIV_MASK) == BEEP_CSR_DIV_RESET)
+    {
+        // Set default prescaler value if not already set
+        BEEP->CSR = (BEEP->CSR & BEEP_CSR_DIV_MASK) | BEEP_CSR_DIV_13;
+    }
+    BEEP->CSR = (BEEP->CSR & BEEP_CSR_SEL_MASK) | freq;
+}
+
+//=============================================================================
+// Set prescaler divider based on LSI frequency
+//
+// Note on the calculation:
+//   lsi_freq is the frequency of the LSI RC clock as measured by a timer
+//
+// A is the integer part of LSIFreqkHz/4 and x the decimal part.
+// x <= A/(1+2A) is equivalent to A >= x(1+2A) and also to 4A >= 4x(1+2A) [F1]
+// but we know that A + x = LSIFreqkHz/4 ==> 4x = LSIFreqkHz-4A
+// so [F1] can be written :
+// 4A >= (LSIFreqkHz-4A)(1+2A)
+//
+void Beep_Calibrate(uint32_t lsi_freq)
+{
+    uint16_t khz;
+    uint16_t div8;
+    uint8_t div;
+
+    khz = (uint16_t)(lsi_freq / 1000);
+
+    // Calculation of BEEPER calibration value
+    BEEP->CSR &= (uint8_t)(~BEEP_CSR_DIV_MASK); /* Clear bits */
+
+    div8 = khz / 8;
+    if ((8U * div8) >= ((khz - (8U * div8)) * (1U + (2U * div8))))
+    {
+        div = (uint8_t)(div8 - 2U);
+    }
+    else
+    {
+        div = (uint8_t)(div8 - 1U);
+    }
+    BEEP->CSR = (BEEP->CSR & BEEP_CSR_DIV_MASK) | div;
+}
+
+//=============================================================================
+// Turn on beeper
+//
+void Beep_On(void)
+{
+    BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_EN_MASK) | BEEP_CSR_EN_ENABLE;
+}
+
+//=============================================================================
+// Turn off beeper
+//
+void Beep_Off(void)
+{
+    BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_EN_MASK) | BEEP_CSR_EN_DISABLE;
+}
+
+//=============================================================================
+// Toggle state of beeper
+//
+void Beep_Toggle(void)
+{
+    BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_EN_MASK) | (~BEEP->CSR & BEEP_CSR_EN_MASK);
+}
+
+//=============================================================================
+// Auto wakeup functions
+//
+
+// High nibble is APR value, low nibble is TBR value
+typedef enum
+{
+    AWU_PERIOD_250us    = 0x0000,
+    AWU_PERIOD_500us    = 0x1E01,
+    AWU_PERIOD_1ms      = 0x1E02,
+    AWU_PERIOD_2ms      = 0x1E03,
+    AWU_PERIOD_4ms      = 0x1E04,
+    AWU_PERIOD_8ms      = 0x1E05,
+    AWU_PERIOD_16ms     = 0x1E06,
+    AWU_PERIOD_32ms     = 0x1E07,
+    AWU_PERIOD_64ms     = 0x1E08,
+    AWU_PERIOD_128ms    = 0x1E09,
+    AWU_PERIOD_256ms    = 0x1E0A,
+    AWU_PERIOD_512ms    = 0x1E0B,
+    AWU_PERIOD_1s       = 0x3D0C,
+    AWU_PERIOD_2s       = 0x170C,
+    AWU_PERIOD_12s      = 0x170F,
+    AWU_PERIOD_30s      = 0x3E0F
+} awu_period_t;
+
+void Awu_SetPeriod(awu_period_t period)
+{
+    AWU->CSR = (AWU->CSR & ~AWU_CSR_AWEN_MASK) | AWU_CSR_AWEN_ENABLE;
+    AWU->TBR = (AWU->TBR & ~AWU_TBR_MASK) | ((period >> 0) & 0xFF);
+    AWU->APR = (AWU->APR & ~AWU_APR_DIV_MASK) | ((period >> 8) & 0xFF);
+}
+
+void Awu_SetIdleMode(void)
+{
+    AWU->CSR = (AWU->CSR & ~AWU_CSR_AWEN_MASK) | AWU_CSR_AWEN_DISABLE;
+    AWU->TBR = (AWU->TBR & ~AWU_TBR_MASK) | AWU_TBR_NONE;
+}
+
+void Awu_Disable(void)
+{
+    AWU->CSR = (AWU->CSR & ~AWU_CSR_AWEN_MASK) | AWU_CSR_AWEN_DISABLE;
+}
+
+void Awu_Enable(void)
+{
+    AWU->CSR = (AWU->CSR & ~ AWU_CSR_AWEN_MASK) | AWU_CSR_AWEN_ENABLE;
+}
+
 
 //=============================================================================
 // System Tick functions
