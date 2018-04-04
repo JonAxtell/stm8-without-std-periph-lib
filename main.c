@@ -9,6 +9,10 @@
  * Copyright 2018 Jon Axtell GPL
  */
 
+//#define FLASHER
+//#define FADER
+#define SERIALIZER
+
 // Some basic macros to make life easy
 #ifdef __gcc__
 #define __PACKED    __attribute((packed))
@@ -44,9 +48,6 @@ typedef struct
     uint8_t size;
     uint8_t *buffer;
 } circular_buffer_t;
-
-uint8_t buffer[32];
-circular_buffer_t cirbuf;
 
 //=============================================================================
 // Initialise circular buffer
@@ -99,6 +100,14 @@ bool CircBuf_IsEmpty(circular_buffer_t *buf)
 bool CircBuf_IsFull(circular_buffer_t *buf)
 {
     return ((buf->in + 1) & buf->size) == buf->out;
+}
+
+//=============================================================================
+// Returns how much of buffer is used
+//
+uint8_t CircBuf_Used(circular_buffer_t *buf)
+{
+    return (buf->in - buf->out) & buf->size;
 }
 
 //#############################################################################
@@ -204,33 +213,33 @@ typedef struct
 #define CLK_CKDIVR_CPUDIV64     ((uint8_t)0x06) /* CPU clock division factors 64 */
 #define CLK_CKDIVR_CPUDIV128    ((uint8_t)0x07) /* CPU clock division factors 128 */
 
-#define CLK_PCKENR1_MASK        ((uint8_t)0xFF)
-#define CLK_PCKENR1_TIM1        ((uint8_t)0x80) /* Timer 1 clock enable */
-#define CLK_PCKENR1_TIM3        ((uint8_t)0x40) /* Timer 3 clock enable */
-#define CLK_PCKENR1_TIM2        ((uint8_t)0x20) /* Timer 2 clock enable */
-#define CLK_PCKENR1_TIM5        ((uint8_t)0x20) /* Timer 5 clock enable */
-#define CLK_PCKENR1_TIM4        ((uint8_t)0x10) /* Timer 4 clock enable */
-#define CLK_PCKENR1_TIM6        ((uint8_t)0x10) /* Timer 6 clock enable */
-#define CLK_PCKENR1_UART3       ((uint8_t)0x08) /* UART3 clock enable */
-#define CLK_PCKENR1_UART2       ((uint8_t)0x08) /* UART2 clock enable */
-#define CLK_PCKENR1_UART1       ((uint8_t)0x04) /* UART1 clock enable */
-#define CLK_PCKENR1_SPI         ((uint8_t)0x02) /* SPI clock enable */
-#define CLK_PCKENR1_I2C         ((uint8_t)0x01) /* I2C clock enable */
+#define CLK_PCKENR1_MASK            ((uint8_t)0xFF)
+#define CLK_PCKENR1_TIM1            ((uint8_t)0x80) /* Timer 1 clock enable */
+#define CLK_PCKENR1_TIM3            ((uint8_t)0x40) /* Timer 3 clock enable */
+#define CLK_PCKENR1_TIM2            ((uint8_t)0x20) /* Timer 2 clock enable */
+#define CLK_PCKENR1_TIM5            ((uint8_t)0x20) /* Timer 5 clock enable */
+#define CLK_PCKENR1_TIM4            ((uint8_t)0x10) /* Timer 4 clock enable */
+#define CLK_PCKENR1_TIM6            ((uint8_t)0x10) /* Timer 6 clock enable */
+#define CLK_PCKENR1_UART3           ((uint8_t)0x08) /* UART3 clock enable */
+#define CLK_PCKENR1_UART2           ((uint8_t)0x08) /* UART2 clock enable */
+#define CLK_PCKENR1_UART1           ((uint8_t)0x04) /* UART1 clock enable */
+#define CLK_PCKENR1_SPI             ((uint8_t)0x02) /* SPI clock enable */
+#define CLK_PCKENR1_I2C             ((uint8_t)0x01) /* I2C clock enable */
 
-#define CLK_PCKENR2_MASK        ((uint8_t)0x8C)
-#define CLK_PCKENR2_CAN         ((uint8_t)0x80) /* CAN clock enable */
-#define CLK_PCKENR2_ADC         ((uint8_t)0x08) /* ADC clock enable */
-#define CLK_PCKENR2_AWU         ((uint8_t)0x04) /* AWU clock enable */
+#define CLK_PCKENR2_MASK            ((uint8_t)0x8C)
+#define CLK_PCKENR2_CAN             ((uint8_t)0x80) /* CAN clock enable */
+#define CLK_PCKENR2_ADC             ((uint8_t)0x08) /* ADC clock enable */
+#define CLK_PCKENR2_AWU             ((uint8_t)0x04) /* AWU clock enable */
 
-#define CLK_CSSR_CSSD        ((uint8_t)0x08) /* Clock security system detection */
-#define CLK_CSSR_CSSDIE      ((uint8_t)0x04) /* Clock security system detection interrupt enable */
-#define CLK_CSSR_AUX         ((uint8_t)0x02) /* Auxiliary oscillator connected to master clock */
-#define CLK_CSSR_CSSEN       ((uint8_t)0x01) /* Clock security system enable */
+#define CLK_CSSR_CSSD               ((uint8_t)0x08) /* Clock security system detection */
+#define CLK_CSSR_CSSDIE             ((uint8_t)0x04) /* Clock security system detection interrupt enable */
+#define CLK_CSSR_AUX                ((uint8_t)0x02) /* Auxiliary oscillator connected to master clock */
+#define CLK_CSSR_CSSEN              ((uint8_t)0x01) /* Clock security system enable */
 
-#define CLK_CCOR_CCOBSY      ((uint8_t)0x40) /* Configurable clock output busy */
-#define CLK_CCOR_CCORDY      ((uint8_t)0x20) /* Configurable clock output ready */
-#define CLK_CCOR_CCOSEL      ((uint8_t)0x1E) /* Configurable clock output selection */
-#define CLK_CCOR_CCOEN       ((uint8_t)0x01) /* Configurable clock output enable */
+#define CLK_CCOR_CCOBSY             ((uint8_t)0x40) /* Configurable clock output busy */
+#define CLK_CCOR_CCORDY             ((uint8_t)0x20) /* Configurable clock output ready */
+#define CLK_CCOR_CCOSEL             ((uint8_t)0x1E) /* Configurable clock output selection */
+#define CLK_CCOR_CCOEN              ((uint8_t)0x01) /* Configurable clock output enable */
 
 #define CLK_HSITRIMR_HSITRIM_MASK   ((uint8_t)0x07) /* High speed internal oscillator trimmer */
 #define CLK_HSITRIMR_HSITRIM_0      ((uint8_t)0x000 /* HSI Calibration Value 0 */
@@ -242,7 +251,7 @@ typedef struct
 #define CLK_HSITRIMR_HSITRIM_6      ((uint8_t)0x06) /* HSI Calibration Value 6 */
 #define CLK_HSITRIMR_HSITRIM_7      ((uint8_t)0x07) /* HSI Calibration Value 7 */
 
-#define CLK_SWIMCCR_SWIMDIV  ((uint8_t)0x01) /* SWIM Clock Dividing Factor */
+#define CLK_SWIMCCR_SWIMDIV         ((uint8_t)0x01) /* SWIM Clock Dividing Factor */
 
 
 //=============================================================================
@@ -257,133 +266,133 @@ typedef struct
     __IO uint8_t CR2;   // Configuration Register 2
 } stm8_gpio_t;
 
-#define GPIOA_BaseAddress       0x5000
-#define GPIOB_BaseAddress       0x5005
-#define GPIOC_BaseAddress       0x500A
-#define GPIOD_BaseAddress       0x500F
-#define GPIOE_BaseAddress       0x5014
-#define GPIOF_BaseAddress       0x5019
-#define GPIOG_BaseAddress       0x501E
-#define GPIOH_BaseAddress       0x5023
-#define GPIOI_BaseAddress       0x5028
-#define GPIOA                   ((stm8_gpio_t *)GPIOA_BaseAddress)
-#define GPIOB                   ((stm8_gpio_t *)GPIOB_BaseAddress)
-#define GPIOC                   ((stm8_gpio_t *)GPIOC_BaseAddress)
-#define GPIOD                   ((stm8_gpio_t *)GPIOD_BaseAddress)
-#define GPIOE                   ((stm8_gpio_t *)GPIOE_BaseAddress)
-#define GPIOF                   ((stm8_gpio_t *)GPIOF_BaseAddress)
-#define GPIOG                   ((stm8_gpio_t *)GPIOG_BaseAddress)
-#define GPIOH                   ((stm8_gpio_t *)GPIOH_BaseAddress)
-#define GPIOI                   ((stm8_gpio_t *)GPIOI_BaseAddress)
+#define GPIOA_BaseAddress               0x5000
+#define GPIOB_BaseAddress               0x5005
+#define GPIOC_BaseAddress               0x500A
+#define GPIOD_BaseAddress               0x500F
+#define GPIOE_BaseAddress               0x5014
+#define GPIOF_BaseAddress               0x5019
+#define GPIOG_BaseAddress               0x501E
+#define GPIOH_BaseAddress               0x5023
+#define GPIOI_BaseAddress               0x5028
+#define GPIOA                           ((stm8_gpio_t *)GPIOA_BaseAddress)
+#define GPIOB                           ((stm8_gpio_t *)GPIOB_BaseAddress)
+#define GPIOC                           ((stm8_gpio_t *)GPIOC_BaseAddress)
+#define GPIOD                           ((stm8_gpio_t *)GPIOD_BaseAddress)
+#define GPIOE                           ((stm8_gpio_t *)GPIOE_BaseAddress)
+#define GPIOF                           ((stm8_gpio_t *)GPIOF_BaseAddress)
+#define GPIOG                           ((stm8_gpio_t *)GPIOG_BaseAddress)
+#define GPIOH                           ((stm8_gpio_t *)GPIOH_BaseAddress)
+#define GPIOI                           ((stm8_gpio_t *)GPIOI_BaseAddress)
 
-#define GPIO_PIN_0              ((uint8_t)0x01)
-#define GPIO_PIN_1              ((uint8_t)0x02)
-#define GPIO_PIN_2              ((uint8_t)0x04)
-#define GPIO_PIN_3              ((uint8_t)0x08)
-#define GPIO_PIN_4              ((uint8_t)0x10)
-#define GPIO_PIN_5              ((uint8_t)0x20)
-#define GPIO_PIN_6              ((uint8_t)0x40)
-#define GPIO_PIN_7              ((uint8_t)0x80)
+#define GPIO_PIN_0                      ((uint8_t)0x01)
+#define GPIO_PIN_1                      ((uint8_t)0x02)
+#define GPIO_PIN_2                      ((uint8_t)0x04)
+#define GPIO_PIN_3                      ((uint8_t)0x08)
+#define GPIO_PIN_4                      ((uint8_t)0x10)
+#define GPIO_PIN_5                      ((uint8_t)0x20)
+#define GPIO_PIN_6                      ((uint8_t)0x40)
+#define GPIO_PIN_7                      ((uint8_t)0x80)
 
-#define GPIO_ODR_0_MASK         ((uint8_t)0x01)
-#define GPIO_ODR_0_LOW          ((uint8_t)0x00)
-#define GPIO_ODR_0_HIGH         ((uint8_t)0x01)
-#define GPIO_ODR_1_MASK         ((uint8_t)0x02)
-#define GPIO_ODR_1_LOW          ((uint8_t)0x00)
-#define GPIO_ODR_1_HIGH         ((uint8_t)0x02)
-#define GPIO_ODR_2_MASK         ((uint8_t)0x04)
-#define GPIO_ODR_2_LOW          ((uint8_t)0x00)
-#define GPIO_ODR_2_HIGH         ((uint8_t)0x04)
-#define GPIO_ODR_3_MASK         ((uint8_t)0x08)
-#define GPIO_ODR_3_LOW          ((uint8_t)0x00)
-#define GPIO_ODR_3_HIGH         ((uint8_t)0x08)
-#define GPIO_ODR_4_MASK         ((uint8_t)0x10)
-#define GPIO_ODR_4_LOW          ((uint8_t)0x00)
-#define GPIO_ODR_4_HIGH         ((uint8_t)0x10)
-#define GPIO_ODR_5_MASK         ((uint8_t)0x20)
-#define GPIO_ODR_5_LOW          ((uint8_t)0x00)
-#define GPIO_ODR_5_HIGH         ((uint8_t)0x20)
-#define GPIO_ODR_6_MASK         ((uint8_t)0x40)
-#define GPIO_ODR_6_LOW          ((uint8_t)0x00)
-#define GPIO_ODR_6_HIGH         ((uint8_t)0x40)
-#define GPIO_ODR_7_MASK         ((uint8_t)0x80)
-#define GPIO_ODR_7_LOW          ((uint8_t)0x00)
-#define GPIO_ODR_7_HIGH         ((uint8_t)0x80)
+#define GPIO_ODR_0_MASK                 ((uint8_t)0x01)
+#define GPIO_ODR_0_LOW                  ((uint8_t)0x00)
+#define GPIO_ODR_0_HIGH                 ((uint8_t)0x01)
+#define GPIO_ODR_1_MASK                 ((uint8_t)0x02)
+#define GPIO_ODR_1_LOW                  ((uint8_t)0x00)
+#define GPIO_ODR_1_HIGH                 ((uint8_t)0x02)
+#define GPIO_ODR_2_MASK                 ((uint8_t)0x04)
+#define GPIO_ODR_2_LOW                  ((uint8_t)0x00)
+#define GPIO_ODR_2_HIGH                 ((uint8_t)0x04)
+#define GPIO_ODR_3_MASK                 ((uint8_t)0x08)
+#define GPIO_ODR_3_LOW                  ((uint8_t)0x00)
+#define GPIO_ODR_3_HIGH                 ((uint8_t)0x08)
+#define GPIO_ODR_4_MASK                 ((uint8_t)0x10)
+#define GPIO_ODR_4_LOW                  ((uint8_t)0x00)
+#define GPIO_ODR_4_HIGH                 ((uint8_t)0x10)
+#define GPIO_ODR_5_MASK                 ((uint8_t)0x20)
+#define GPIO_ODR_5_LOW                  ((uint8_t)0x00)
+#define GPIO_ODR_5_HIGH                 ((uint8_t)0x20)
+#define GPIO_ODR_6_MASK                 ((uint8_t)0x40)
+#define GPIO_ODR_6_LOW                  ((uint8_t)0x00)
+#define GPIO_ODR_6_HIGH                 ((uint8_t)0x40)
+#define GPIO_ODR_7_MASK                 ((uint8_t)0x80)
+#define GPIO_ODR_7_LOW                  ((uint8_t)0x00)
+#define GPIO_ODR_7_HIGH                 ((uint8_t)0x80)
 
-#define GPIO_IDR_0_MASK         ((uint8_t)0x01)
-#define GPIO_IDR_0_LOW          ((uint8_t)0x00)
-#define GPIO_IDR_0_HIGH         ((uint8_t)0x01)
-#define GPIO_IDR_1_MASK         ((uint8_t)0x02)
-#define GPIO_IDR_1_LOW          ((uint8_t)0x00)
-#define GPIO_IDR_1_HIGH         ((uint8_t)0x02)
-#define GPIO_IDR_2_MASK         ((uint8_t)0x04)
-#define GPIO_IDR_2_LOW          ((uint8_t)0x00)
-#define GPIO_IDR_2_HIGH         ((uint8_t)0x04)
-#define GPIO_IDR_3_MASK         ((uint8_t)0x08)
-#define GPIO_IDR_3_LOW          ((uint8_t)0x00)
-#define GPIO_IDR_3_HIGH         ((uint8_t)0x08)
-#define GPIO_IDR_4_MASK         ((uint8_t)0x10)
-#define GPIO_IDR_4_LOW          ((uint8_t)0x00)
-#define GPIO_IDR_4_HIGH         ((uint8_t)0x10)
-#define GPIO_IDR_5_MASK         ((uint8_t)0x20)
-#define GPIO_IDR_5_LOW          ((uint8_t)0x00)
-#define GPIO_IDR_5_HIGH         ((uint8_t)0x20)
-#define GPIO_IDR_6_MASK         ((uint8_t)0x40)
-#define GPIO_IDR_6_LOW          ((uint8_t)0x00)
-#define GPIO_IDR_6_HIGH         ((uint8_t)0x40)
-#define GPIO_IDR_7_MASK         ((uint8_t)0x80)
-#define GPIO_IDR_7_LOW          ((uint8_t)0x00)
-#define GPIO_IDR_7_HIGH         ((uint8_t)0x80)
+#define GPIO_IDR_0_MASK                 ((uint8_t)0x01)
+#define GPIO_IDR_0_LOW                  ((uint8_t)0x00)
+#define GPIO_IDR_0_HIGH                 ((uint8_t)0x01)
+#define GPIO_IDR_1_MASK                 ((uint8_t)0x02)
+#define GPIO_IDR_1_LOW                  ((uint8_t)0x00)
+#define GPIO_IDR_1_HIGH                 ((uint8_t)0x02)
+#define GPIO_IDR_2_MASK                 ((uint8_t)0x04)
+#define GPIO_IDR_2_LOW                  ((uint8_t)0x00)
+#define GPIO_IDR_2_HIGH                 ((uint8_t)0x04)
+#define GPIO_IDR_3_MASK                 ((uint8_t)0x08)
+#define GPIO_IDR_3_LOW                  ((uint8_t)0x00)
+#define GPIO_IDR_3_HIGH                 ((uint8_t)0x08)
+#define GPIO_IDR_4_MASK                 ((uint8_t)0x10)
+#define GPIO_IDR_4_LOW                  ((uint8_t)0x00)
+#define GPIO_IDR_4_HIGH                 ((uint8_t)0x10)
+#define GPIO_IDR_5_MASK                 ((uint8_t)0x20)
+#define GPIO_IDR_5_LOW                  ((uint8_t)0x00)
+#define GPIO_IDR_5_HIGH                 ((uint8_t)0x20)
+#define GPIO_IDR_6_MASK                 ((uint8_t)0x40)
+#define GPIO_IDR_6_LOW                  ((uint8_t)0x00)
+#define GPIO_IDR_6_HIGH                 ((uint8_t)0x40)
+#define GPIO_IDR_7_MASK                 ((uint8_t)0x80)
+#define GPIO_IDR_7_LOW                  ((uint8_t)0x00)
+#define GPIO_IDR_7_HIGH                 ((uint8_t)0x80)
 
-#define GPIO_DDR_0_MASK         ((uint8_t)0x01)
-#define GPIO_DDR_0_INPUT        ((uint8_t)0x00)
-#define GPIO_DDR_0_OUTPUT       ((uint8_t)0x01)
-#define GPIO_DDR_1_MASK         ((uint8_t)0x02)
-#define GPIO_DDR_1_INPUT        ((uint8_t)0x00)
-#define GPIO_DDR_1_OUTPUT       ((uint8_t)0x02)
-#define GPIO_DDR_2_MASK         ((uint8_t)0x04)
-#define GPIO_DDR_2_INPUT        ((uint8_t)0x00)
-#define GPIO_DDR_2_OUTPUT       ((uint8_t)0x04)
-#define GPIO_DDR_3_MASK         ((uint8_t)0x08)
-#define GPIO_DDR_3_INPUT        ((uint8_t)0x00)
-#define GPIO_DDR_3_OUTPUT       ((uint8_t)0x08)
-#define GPIO_DDR_4_MASK         ((uint8_t)0x10)
-#define GPIO_DDR_4_INPUT        ((uint8_t)0x00)
-#define GPIO_DDR_4_OUTPUT       ((uint8_t)0x10)
-#define GPIO_DDR_5_MASK         ((uint8_t)0x20)
-#define GPIO_DDR_5_INPUT        ((uint8_t)0x00)
-#define GPIO_DDR_5_OUTPUT       ((uint8_t)0x20)
-#define GPIO_DDR_6_MASK         ((uint8_t)0x40)
-#define GPIO_DDR_6_INPUT        ((uint8_t)0x00)
-#define GPIO_DDR_6_OUTPUT       ((uint8_t)0x40)
-#define GPIO_DDR_7_MASK         ((uint8_t)0x80)
-#define GPIO_DDR_7_INPUT        ((uint8_t)0x00)
-#define GPIO_DDR_7_OUTPUT       ((uint8_t)0x80)
+#define GPIO_DDR_0_MASK                 ((uint8_t)0x01)
+#define GPIO_DDR_0_INPUT                ((uint8_t)0x00)
+#define GPIO_DDR_0_OUTPUT               ((uint8_t)0x01)
+#define GPIO_DDR_1_MASK                 ((uint8_t)0x02)
+#define GPIO_DDR_1_INPUT                ((uint8_t)0x00)
+#define GPIO_DDR_1_OUTPUT               ((uint8_t)0x02)
+#define GPIO_DDR_2_MASK                 ((uint8_t)0x04)
+#define GPIO_DDR_2_INPUT                ((uint8_t)0x00)
+#define GPIO_DDR_2_OUTPUT               ((uint8_t)0x04)
+#define GPIO_DDR_3_MASK                 ((uint8_t)0x08)
+#define GPIO_DDR_3_INPUT                ((uint8_t)0x00)
+#define GPIO_DDR_3_OUTPUT               ((uint8_t)0x08)
+#define GPIO_DDR_4_MASK                 ((uint8_t)0x10)
+#define GPIO_DDR_4_INPUT                ((uint8_t)0x00)
+#define GPIO_DDR_4_OUTPUT               ((uint8_t)0x10)
+#define GPIO_DDR_5_MASK                 ((uint8_t)0x20)
+#define GPIO_DDR_5_INPUT                ((uint8_t)0x00)
+#define GPIO_DDR_5_OUTPUT               ((uint8_t)0x20)
+#define GPIO_DDR_6_MASK                 ((uint8_t)0x40)
+#define GPIO_DDR_6_INPUT                ((uint8_t)0x00)
+#define GPIO_DDR_6_OUTPUT               ((uint8_t)0x40)
+#define GPIO_DDR_7_MASK                 ((uint8_t)0x80)
+#define GPIO_DDR_7_INPUT                ((uint8_t)0x00)
+#define GPIO_DDR_7_OUTPUT               ((uint8_t)0x80)
 
-#define GPIO_CR1_0_INPUT_MASK       ((uint8_t)0x01)
-#define GPIO_CR1_0_INPUT_FLOATING   ((uint8_t)0x00)
-#define GPIO_CR1_0_INPUT_PULLUP     ((uint8_t)0x01)
-#define GPIO_CR1_1_INPUT_MASK       ((uint8_t)0x02)
-#define GPIO_CR1_1_INPUT_FLOATING   ((uint8_t)0x00)
-#define GPIO_CR1_1_INPUT_PULLUP     ((uint8_t)0x02)
-#define GPIO_CR1_2_INPUT_MASK       ((uint8_t)0x04)
-#define GPIO_CR1_2_INPUT_FLOATING   ((uint8_t)0x00)
-#define GPIO_CR1_2_INPUT_PULLUP     ((uint8_t)0x04)
-#define GPIO_CR1_3_INPUT_MASK       ((uint8_t)0x08)
-#define GPIO_CR1_3_INPUT_FLOATING   ((uint8_t)0x00)
-#define GPIO_CR1_3_INPUT_PULLUP     ((uint8_t)0x08)
-#define GPIO_CR1_4_INPUT_MASK       ((uint8_t)0x10)
-#define GPIO_CR1_4_INPUT_FLOATING   ((uint8_t)0x00)
-#define GPIO_CR1_4_INPUT_PULLUP     ((uint8_t)0x10)
-#define GPIO_CR1_5_INPUT_MASK       ((uint8_t)0x20)
-#define GPIO_CR1_5_INPUT_FLOATING   ((uint8_t)0x00)
-#define GPIO_CR1_5_INPUT_PULLUP     ((uint8_t)0x20)
-#define GPIO_CR1_6_INPUT_MASK       ((uint8_t)0x40)
-#define GPIO_CR1_6_INPUT_FLOATING   ((uint8_t)0x00)
-#define GPIO_CR1_6_INPUT_PULLUP     ((uint8_t)0x40)
-#define GPIO_CR1_7_INPUT_MASK       ((uint8_t)0x80)
-#define GPIO_CR1_7_INPUT_FLOATING   ((uint8_t)0x00)
-#define GPIO_CR1_7_INPUT_PULLUP     ((uint8_t)0x80)
+#define GPIO_CR1_0_INPUT_MASK           ((uint8_t)0x01)
+#define GPIO_CR1_0_INPUT_FLOATING       ((uint8_t)0x00)
+#define GPIO_CR1_0_INPUT_PULLUP         ((uint8_t)0x01)
+#define GPIO_CR1_1_INPUT_MASK           ((uint8_t)0x02)
+#define GPIO_CR1_1_INPUT_FLOATING       ((uint8_t)0x00)
+#define GPIO_CR1_1_INPUT_PULLUP         ((uint8_t)0x02)
+#define GPIO_CR1_2_INPUT_MASK           ((uint8_t)0x04)
+#define GPIO_CR1_2_INPUT_FLOATING       ((uint8_t)0x00)
+#define GPIO_CR1_2_INPUT_PULLUP         ((uint8_t)0x04)
+#define GPIO_CR1_3_INPUT_MASK           ((uint8_t)0x08)
+#define GPIO_CR1_3_INPUT_FLOATING       ((uint8_t)0x00)
+#define GPIO_CR1_3_INPUT_PULLUP         ((uint8_t)0x08)
+#define GPIO_CR1_4_INPUT_MASK           ((uint8_t)0x10)
+#define GPIO_CR1_4_INPUT_FLOATING       ((uint8_t)0x00)
+#define GPIO_CR1_4_INPUT_PULLUP         ((uint8_t)0x10)
+#define GPIO_CR1_5_INPUT_MASK           ((uint8_t)0x20)
+#define GPIO_CR1_5_INPUT_FLOATING       ((uint8_t)0x00)
+#define GPIO_CR1_5_INPUT_PULLUP         ((uint8_t)0x20)
+#define GPIO_CR1_6_INPUT_MASK           ((uint8_t)0x40)
+#define GPIO_CR1_6_INPUT_FLOATING       ((uint8_t)0x00)
+#define GPIO_CR1_6_INPUT_PULLUP         ((uint8_t)0x40)
+#define GPIO_CR1_7_INPUT_MASK           ((uint8_t)0x80)
+#define GPIO_CR1_7_INPUT_FLOATING       ((uint8_t)0x00)
+#define GPIO_CR1_7_INPUT_PULLUP         ((uint8_t)0x80)
 
 #define GPIO_CR1_0_OUTPUT_MASK          ((uint8_t)0x01)
 #define GPIO_CR1_0_OUTPUT_OPENDRAIN     ((uint8_t)0x00)
@@ -1303,6 +1312,8 @@ typedef struct
 // aren't used.
 //
 
+uint32_t sysclock;
+
 //-----------------------------------------------------------------------------
 // Set the system clock to the Low Speed Internal clock.
 //
@@ -1330,6 +1341,8 @@ void SysClock_LSI(void)
     while (CLK->CMSR != CLK_CMSR_CKM_LSI)
     {
     }
+
+    sysclock = 128000;
 }
 
 //-----------------------------------------------------------------------------
@@ -1360,6 +1373,8 @@ void SysClock_HSI(void)
     while (CLK->CMSR != CLK_CMSR_CKM_HSI)
     {
     }
+
+    sysclock = 16000000;
 }
 
 //-----------------------------------------------------------------------------
@@ -1387,11 +1402,13 @@ void SysClock_HSE(void)
     while (CLK->CMSR != CLK_CMSR_CKM_HSE)
     {
     }
+
+    sysclock = 8000000;
 }
 
 uint32_t SysClock_GetClockFreq(void)
 {
-    return 16000000;
+    return sysclock;
 }
 
 //=============================================================================
@@ -1401,6 +1418,10 @@ uint32_t SysClock_GetClockFreq(void)
 // registers at the same offset. For the registers upto CR4, this is true for
 // all four uarts.
 //
+
+uint8_t tx_buffer[32];
+circular_buffer_t tx_cirbuf = { 0, 0, 31, tx_buffer };
+
 typedef enum
 {
     PARITY_NONE,
@@ -1454,27 +1475,42 @@ void Uart2_Config9600_8N1(void)
     UART2->CR2 = (UART2->CR2 & ~(UARTx_CR2_TEN_MASK | UARTx_CR2_REN_MASK)) | UARTx_CR2_TEN_ENABLE | UARTx_CR2_REN_ENABLE;
 }
 
-void Uart2_DisableTxInterrupts(void)
+//-----------------------------------------------------------------------------
+// Disable transmit interrupts
+//
+inline void Uart2_DisableTxInterrupts(void)
 {
     UART2->CR2 = (UART2->CR2 & ~UARTx_CR2_TIEN_MASK) | UARTx_CR2_TIEN_DISABLE;
 }
 
-void Uart2_EnableTxInterrupts(void)
+//-----------------------------------------------------------------------------
+// Enable transmit interrupts
+//
+inline void Uart2_EnableTxInterrupts(void)
 {
     UART2->CR2 = (UART2->CR2 & ~UARTx_CR2_TIEN_MASK) | UARTx_CR2_TIEN_ENABLE;
 }
 
-void Uart2_DisableRxInterrupts(void)
+//-----------------------------------------------------------------------------
+// Disable receiver interrupts
+//
+inline void Uart2_DisableRxInterrupts(void)
 {
     UART2->CR2 = (UART2->CR2 & ~UARTx_CR2_RIEN_MASK) | UARTx_CR2_RIEN_DISABLE;
 }
 
-void Uart2_EnableRxInterrupts(void)
+//-----------------------------------------------------------------------------
+// Enable receiver interrupts
+//
+inline void Uart2_EnableRxInterrupts(void)
 {
     UART2->CR2 = (UART2->CR2 & ~UARTx_CR2_RIEN_MASK) | UARTx_CR2_RIEN_ENABLE;
 }
 
-void Uart2_BlockingSend(uint8_t byte)
+//-----------------------------------------------------------------------------
+// Send a byte, waiting till it can be sent
+//
+void Uart2_BlockingSendByte(uint8_t byte)
 {
     while ((UART2->SR & UARTx_SR_TXE_MASK) == UARTx_SR_TXE_NOTREADY)
     {
@@ -1482,17 +1518,28 @@ void Uart2_BlockingSend(uint8_t byte)
     UART2->DR = byte;
 }
 
-bool Uart2_Send(uint8_t byte)
+//-----------------------------------------------------------------------------
+// Send a byte and return immediately (so long as circular buffer is not full)
+//
+// If this is the first byte in a packet, then it will be placed in the shift
+// register. If it's the second byte, ie. one is still being sent but interrupts
+// haven't been enabled then the byte is placed in the circular buffer and
+// interrupts enabled so that when the first byte has been sent, the interrupt
+// will use the byte in the buffer. In all other cases, the byte is placed in
+// the circular buffer so long as it's not full. If it's full, then the function
+// returns immediately.
+//
+bool Uart2_SendByte(uint8_t byte) __critical
 {
     if ((UART2->CR2 & UARTx_CR2_TIEN_MASK) == UARTx_CR2_TIEN_ENABLE)
     {
         // Interrupts enabled, so buffer being used
-        if (CircBuf_IsFull(&cirbuf))
+        if (CircBuf_IsFull(&tx_cirbuf))
         {
             // However, buffer is full so can't send
             return false;
         }
-        CircBuf_Put(&cirbuf, byte);
+        CircBuf_Put(&tx_cirbuf, byte);
     }
     else
     {
@@ -1504,15 +1551,25 @@ bool Uart2_Send(uint8_t byte)
         else
         {
             // No interrupts, but shift register still has something in it, use buffer
-            CircBuf_Put(&cirbuf, byte);
+            CircBuf_Put(&tx_cirbuf, byte);
             Uart2_EnableTxInterrupts();
         }
     }
     return true;
-    // while ((UART2->SR & UARTx_SR_TXE_MASK) == UARTx_SR_TXE_NOTREADY)
-    // {
-    // }
-    // UART2->DR = byte;
+}
+
+//-----------------------------------------------------------------------------
+// Send a string
+//
+void Uart2_SendString(const char *str)
+{
+    while (*str)
+    {
+        while (!Uart2_SendByte(*str))
+        {
+        }
+        ++str;
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -1520,8 +1577,11 @@ bool Uart2_Send(uint8_t byte)
 //
 void UART2_TX_IRQHandler(void) __interrupt(20)
 {
-    UART2->DR = CircBuf_Get(&cirbuf);  // Clears TXE flag
-    if (CircBuf_IsEmpty(&cirbuf))
+    //if (!CircBuf_IsEmpty(&tx_cirbuf))
+    {
+        UART2->DR = CircBuf_Get(&tx_cirbuf);  // Clears TXE flag
+    }
+    if (CircBuf_IsEmpty(&tx_cirbuf))
     {
         Uart2_DisableTxInterrupts();
     }
@@ -1742,10 +1802,12 @@ void main(void)
 
     enableInterrupts;
 
-    CircBuf_Init(&cirbuf, buffer, 32);
+    //CircBuf_Init(&tx_cirbuf, tx_buffer, 32);
 
     for (;;)
     {
+        // Flash the LED if PD7 is connected
+#ifdef FLASHER
         if (flash)
         {
             if (Systick_Timeout(&timer, 100))
@@ -1762,7 +1824,10 @@ void main(void)
                 flash = 1;
             }
         }
+#endif
 
+        // Fade the LED in and out if PC3 is connected
+#ifdef FADER
         if (Systick_Timeout(&fader, 10))
         {
             Tim1_SetCounter(value);
@@ -1786,23 +1851,15 @@ void main(void)
                 }
             }
         }
-
-        if (Uart2_Send(serdata))
+#endif
+        // Output a message using interrupts and a circular buffer
+#ifdef SERIALIZER
+        if (Systick_Timeout(&transmitter, 500))
         {
-            ++serdata;
-            if (serdata == 127)
-            {
-                serdata = 32;
-            }
+            Uart2_SendString("The quick brown fox jumps over the lazy dog Pack my box with five dozen liquor jugs 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz\r\n");
         }
-        // //if (Systick_Timeout(&transmitter, 2))
-        // {
-        //     Uart2_Send(serdata);
-        //     ++serdata;
-        //     if (serdata == 127)
-        //     {
-        //         serdata = 32;
-        //     }
-        // }
+
+        Tim1_SetCounter((TIM1_PERIOD * 100) / (10000 / ((CircBuf_Used(&tx_cirbuf) * 100) / 32)));
+#endif
     }
 }
