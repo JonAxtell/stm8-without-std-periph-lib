@@ -2,12 +2,34 @@
  * main.c
  *
  * Simple blinking LED program for the STM8S105K4 development board from Hobbytronics.
- * Well a little bit more involved that a simple blinky as it includes proper timing.
+ * Well a little bit more involved that a simple blinky as it includes proper timing
+ * and other stuff to fully experience the development board and the capabilities of
+ * the STM8 microcontroller.
+ *
  * It's simple in that it doesn't have any reliance on the Standard Peripheral Library
  * or anything complicated and buggy like that.
  *
- * Copyright 2018 Jon Axtell GPL
- */
+ * MIT License
+ *
+ * Copyright (c) 2018 Jon Axtell
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to do
+ * so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+ * PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
 
 //#define FLASHER
 //#define FADER
@@ -110,12 +132,36 @@ uint8_t CircBuf_Used(circular_buffer_t *buf)
     return (buf->in - buf->out) & buf->size;
 }
 
+//=============================================================================
+// Returns how much of buffer is used as a percentage
+//
+uint16_t CircBuf_PercentUsed(circular_buffer_t *buf)
+{
+    return (10000 / ((CircBuf_Used(buf) * 100) / (buf->size + 1)));
+}
+
 //#############################################################################
 // The peripherals in the STM8
 //
 
 //=============================================================================
+// Unique ID
+//
+typedef struct
+{
+    const uint8_t x[2];
+    const uint8_t y[2];
+    const uint8_t wafer;
+    const uint8_t lot[7];
+} stm8_uid_t;
+
+#define UID_BaseAddress         0x48CD
+#define UID                     ((stm_uid_t *)UID_BaseAddress)
+
+
+//=============================================================================
 // System clock
+//
 typedef struct
 {
     __IO uint8_t ICKR;     /* Internal Clocks Control Register */
@@ -1469,6 +1515,7 @@ typedef struct
 
 #define UARTx_PSCR_MASK             ((uint8_t)0xFF)     // Prescaler value (not UART3)
 
+
 //=============================================================================
 // System clock functions
 //
@@ -1571,10 +1618,71 @@ void SysClock_HSE(void)
     sysclock = 8000000;
 }
 
+//-----------------------------------------------------------------------------
+// Return the current clock frequency
+//
 uint32_t SysClock_GetClockFreq(void)
 {
     return sysclock;
 }
+
+//-----------------------------------------------------------------------------
+/**
+  * @brief  Measure the LSI frequency using timer IC1 and update the calibration registers.
+  * @note   It is recommended to use a timer clock frequency of at least 10MHz in order 
+	*         to obtain a better in the LSI frequency measurement.
+  * @param  None
+  * @retval None
+  */
+#if 0
+uint32_t SysClock_MeasureLSI(void)
+{
+    uint32_t lsi_freq_hz = 0x0;
+    uint32_t fmaster = 0x0;
+    uint16_t ICValue1 = 0x0;
+    uint16_t ICValue2 = 0x0;
+
+    // Get master frequency 
+    fmaster = SysClock_GetClockFreq();
+
+    // Enable the LSI measurement: LSI clock connected to timer Input Capture 1 
+    AWU->CSR = (AWU->CSR & ~ AWU_CSR_MSR_MASK) | AWU_CSR_MSR_ENABLE;
+
+    // Measure the LSI frequency with TIMER Input Capture 1 
+
+    // Capture only every 8 events!!! 
+    // Enable capture of TI1 
+    TIM1_ICInit(TIM1_CHANNEL_1, TIM1_ICPOLARITY_RISING, TIM1_ICSELECTION_DIRECTTI, TIM1_ICPSC_DIV8, 0);
+
+    /* Enable TIM1 */
+    TIM1_Cmd(ENABLE);
+
+    /* wait a capture on cc1 */
+    while((TIM1->SR1 & TIM1_FLAG_CC1) != TIM1_FLAG_CC1);
+    /* Get CCR1 value*/
+    ICValue1 = TIM1_GetCapture1();
+    TIM1_ClearFlag(TIM1_FLAG_CC1);
+
+    /* wait a capture on cc1 */
+    while((TIM1->SR1 & TIM1_FLAG_CC1) != TIM1_FLAG_CC1);
+    /* Get CCR1 value*/
+    ICValue2 = TIM1_GetCapture1();
+    TIM1_ClearFlag(TIM1_FLAG_CC1);
+
+    /* Disable IC1 input capture */
+    TIM1->CCER1 &= (uint8_t)(~TIM1_CCER1_CC1E);
+    /* Disable timer2 */
+    TIM1_Cmd(DISABLE);
+  
+    /* Compute LSI clock frequency */
+    lsi_freq_hz = (8 * fmaster) / (ICValue2 - ICValue1);
+
+    /* Disable the LSI measurement: LSI clock disconnected from timer Input Capture 1 */
+    AWU->CSR = (AWU->CSR & ~AWU_CSR_MSR_MASK) | AWU_CSR_MSR_DISABLE;
+
+    return (lsi_freq_hz);
+}
+#endif
 
 //=============================================================================
 // Uart functions
@@ -1673,17 +1781,6 @@ inline void Uart2_EnableRxInterrupts(void)
 }
 
 //-----------------------------------------------------------------------------
-// Send a byte, waiting till it can be sent
-//
-void Uart2_BlockingSendByte(uint8_t byte)
-{
-    while ((UART2->SR & UARTx_SR_TXE_MASK) == UARTx_SR_TXE_NOTREADY)
-    {
-    }
-    UART2->DR = byte;
-}
-
-//-----------------------------------------------------------------------------
 // Send a byte and return immediately (so long as circular buffer is not full)
 //
 // If this is the first byte in a packet, then it will be placed in the shift
@@ -1724,17 +1821,24 @@ bool Uart2_SendByte(uint8_t byte) __critical
 }
 
 //-----------------------------------------------------------------------------
-// Send a string
+// Send a byte, waiting till it can be sent
 //
-void Uart2_SendString(const char *str)
+void Uart2_BlockingSendByte(uint8_t byte)
 {
-    while (*str)
+    while (!Uart2_SendByte(byte))
     {
-        while (!Uart2_SendByte(*str))
-        {
-        }
-        ++str;
     }
+}
+
+//-----------------------------------------------------------------------------
+// Send a byte, without using circular buffer, but blocking till it can be sent
+//
+void Uart2_DirectSendByte(uint8_t byte)
+{
+    while ((UART2->SR & UARTx_SR_TXE_MASK) == UARTx_SR_TXE_NOTREADY)
+    {
+    }
+    UART2->DR = byte;
 }
 
 //-----------------------------------------------------------------------------
@@ -1758,6 +1862,78 @@ void UART2_TX_IRQHandler(void) __interrupt(20)
 void UART2_RX_IRQHandler(void) __interrupt(21)
 {
     (void)UART2->DR;      // Clears RXNE flag
+}
+
+//-----------------------------------------------------------------------------
+// String functions using the serial port
+//
+
+//-----------------------------------------------------------------------------
+// Send a string
+//
+void Uart2_OutputString(const char *str)
+{
+    while (*str)
+    {
+        Uart2_BlockingSendByte(*str);
+        ++str;
+    }
+}
+
+void Uart2_OutputInt(uint32_t i)
+{
+    uint32_t div = 1000000000;
+    bool zero = true;
+
+    while (div != 0)
+    {
+        int ch = i / div;
+        i = i - (ch * div);
+        div = div / 10;
+        if (ch != 0)
+        {
+            zero = false;
+        }
+        if (!zero)
+        {
+            Uart2_BlockingSendByte(ch + '0');
+        }
+    }
+    if (zero)
+    {
+        Uart2_BlockingSendByte('0');
+    }
+}
+
+void _uitoa(unsigned int value, char* string, unsigned char radix)
+{
+    signed char index = 0, i = 0;
+
+    // generate the number in reverse order
+    do
+    {
+        string[index] = '0' + (value % radix);
+        if (string[index] > '9')
+        string[index] += 'A' - '9' - 1;
+        value /= radix;
+        ++index;
+    } while (value != 0);
+
+    // null terminate the string
+    string[index--] = '\0';
+
+    // reverse the order of digits
+    while (index > i)
+    {
+        if (string[i] != string[index])
+        {
+            string[i] = string[i] ^ string[index];
+            string[index] = string[index] ^ string[i];
+            string[i] = string[i] ^ string[index];
+        }
+        ++i;
+        --index;
+    }
 }
 
 //=============================================================================
@@ -1804,9 +1980,45 @@ void Tim1_SetCounter(uint16_t counter)
 }
 
 //-----------------------------------------------------------------------------
-// Configure the TIM1 timer
+// Configure the TIM1 timer 
 //
 void Tim1_Config(void)
+{
+    // Disable to setup
+    TIM1->CR1 = (TIM1->CR1 & ~TIM1_CR1_CEN_MASK) | TIM1_CR1_CEN_DISABLE;
+
+    // Set the auto-reload value
+    Tim1_SetAutoReload(TIM1_PERIOD);
+
+    // Set the prescaler to division by 1
+    Tim1_SetPrescaler(1);
+
+    // Set the counter mode to up
+    TIM1->CR1 = (TIM1->CR1 & ~(TIM1_CR1_CMS_MASK | TIM1_CR1_DIR_MASK)) |
+                TIM1_CR1_CMS_EDGE | TIM1_CR1_DIR_UP;
+
+    // Set the repetition counter to zero
+    TIM1->RCR = 0;
+
+    TIM1->CCER2 = (TIM1->CCER2 & ~(TIM1_CCER2_CC3E_MASK | TIM1_CCER2_CC3NE_MASK | TIM1_CCER2_CC3P_MASK | TIM1_CCER2_CC3NP_MASK)) |
+                    (TIM1_CCER2_CC3E_ENABLE) |
+                    (TIM1_CCER2_CC3P_ENABLE) |
+                    (TIM1_CCER2_CC3NE_ENABLE) |
+                    (TIM1_CCER2_CC3NP_ENABLE);
+    TIM1->CCMR3 = (TIM1->CCMR3 & ~(TIM1_CCMR_OCxM_MASK | TIM1_CCMR_OCxPE_MASK)) | TIM1_CCMR_OCxM_PWM2 | TIM1_CCMR_OCxPE_ENABLE;
+    TIM1->OISR &= ~(TIM1_OISR_OIS3_MASK | TIM1_OISR_OIS3N_MASK);
+    TIM1->OISR |= (TIM1_OISR_OIS3_ENABLE) | (TIM1_OISR_OIS3N_ENABLE);
+    TIM1->CCR3H = (TIM1_CH3_DUTY >> 8) & 0xFF;
+    TIM1->CCR3L = (TIM1_CH3_DUTY >> 0) & 0xFF;
+    TIM1->BKR |= TIM1_BKR_MOE_ENABLE;
+
+    TIM1->CR1 = (TIM1->CR1 & ~TIM1_CR1_CEN_MASK) | TIM1_CR1_CEN_ENABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Configure the TIM1 timer for PWM use
+//
+void Tim1_ConfigPWM(void)
 {
     // Disable to setup
     TIM1->CR1 = (TIM1->CR1 & ~TIM1_CR1_CEN_MASK) | TIM1_CR1_CEN_DISABLE;
@@ -1853,6 +2065,31 @@ void Tim4_Config(uint8_t prescaler, uint8_t reload)
     TIM4->CR1 = (TIM4->CR1 & ~(TIM4_CR1_ARPE_MASK | TIM4_CR1_CEN_MASK)) | TIM4_CR1_ARPE_ENABLE | TIM4_CR1_CEN_ENABLE;
 }
 
+//-----------------------------------------------------------------------------
+// Configure the TIM4 timer for 1ms interrupts
+//
+// Setup 8-bit basic timer as 1ms system tick using interrupts to update the tick counter
+//
+// With 16Mhz HSI prescaler is 128 and reload value is 124. freq = 16000000/128 is 125Khz, therefore reload value is 125 - 1 or 124. Period is 125/125000 which is 0.001s or 1ms
+// With 8Mhz HSE prescaler is 64 and reload value is 124. freq is 8000000/64 is 125Khz.
+// With 128Khz LSI prescaler is 16 and reload value is 128. freq is 128000/16 is 8Khz.
+//
+void Tim4_Config1ms(void)
+{
+    if (SysClock_GetClockFreq() == 16000000)
+    {
+        Tim4_Config(TIM4_PSCR_DIV128, 124);
+    }
+    else if (SysClock_GetClockFreq() == 8000000)
+    {
+        Tim4_Config(TIM4_PSCR_DIV64, 124);
+    }
+    else if (SysClock_GetClockFreq() == 128000)
+    {
+        Tim4_Config(TIM4_PSCR_DIV1, 128);
+    }
+}
+
 //=============================================================================
 // Beeper functions
 //
@@ -1864,7 +2101,7 @@ typedef enum
     BEEP_4KHZ = 0x80
 } beep_freq_t;
 
-//=============================================================================
+//-----------------------------------------------------------------------------
 // Set frequency of beep
 //
 void Beep_SetFrequency(beep_freq_t freq)
@@ -1877,7 +2114,7 @@ void Beep_SetFrequency(beep_freq_t freq)
     BEEP->CSR = (BEEP->CSR & BEEP_CSR_SEL_MASK) | freq;
 }
 
-//=============================================================================
+//-----------------------------------------------------------------------------
 // Set prescaler divider based on LSI frequency
 //
 // Note on the calculation:
@@ -1898,8 +2135,6 @@ void Beep_Calibrate(uint32_t lsi_freq)
     khz = (uint16_t)(lsi_freq / 1000);
 
     // Calculation of BEEPER calibration value
-    BEEP->CSR &= (uint8_t)(~BEEP_CSR_DIV_MASK); /* Clear bits */
-
     div8 = khz / 8;
     if ((8U * div8) >= ((khz - (8U * div8)) * (1U + (2U * div8))))
     {
@@ -1912,7 +2147,7 @@ void Beep_Calibrate(uint32_t lsi_freq)
     BEEP->CSR = (BEEP->CSR & BEEP_CSR_DIV_MASK) | div;
 }
 
-//=============================================================================
+//-----------------------------------------------------------------------------
 // Turn on beeper
 //
 void Beep_On(void)
@@ -1920,7 +2155,7 @@ void Beep_On(void)
     BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_EN_MASK) | BEEP_CSR_EN_ENABLE;
 }
 
-//=============================================================================
+//-----------------------------------------------------------------------------
 // Turn off beeper
 //
 void Beep_Off(void)
@@ -1928,7 +2163,7 @@ void Beep_Off(void)
     BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_EN_MASK) | BEEP_CSR_EN_DISABLE;
 }
 
-//=============================================================================
+//-----------------------------------------------------------------------------
 // Toggle state of beeper
 //
 void Beep_Toggle(void)
@@ -1961,24 +2196,46 @@ typedef enum
     AWU_PERIOD_30s      = 0x3E0F
 } awu_period_t;
 
-void Awu_SetPeriod(awu_period_t period)
+//-----------------------------------------------------------------------------
+// Set the period for auto wakeup
+//
+void Awu_SetPeriod(uint8_t tbr, uint8_t apr)
 {
     AWU->CSR = (AWU->CSR & ~AWU_CSR_AWEN_MASK) | AWU_CSR_AWEN_ENABLE;
-    AWU->TBR = (AWU->TBR & ~AWU_TBR_MASK) | ((period >> 0) & 0xFF);
-    AWU->APR = (AWU->APR & ~AWU_APR_DIV_MASK) | ((period >> 8) & 0xFF);
+    AWU->TBR = (AWU->TBR & ~AWU_TBR_MASK) | tbr;
+    AWU->APR = (AWU->APR & ~AWU_APR_DIV_MASK) | apr;
 }
 
+//-----------------------------------------------------------------------------
+// Set the period for auto wakeup
+//
+// Sample period have been predefined in the awu_period_t enum
+//
+void Awu_SetPresetPeriod(awu_period_t period)
+{
+    Awu_SetPeriod((period >> 0) & 0xFF, (period >> 8) & 0xFF);
+}
+
+//-----------------------------------------------------------------------------
+// Set the idle mode
+//
 void Awu_SetIdleMode(void)
 {
     AWU->CSR = (AWU->CSR & ~AWU_CSR_AWEN_MASK) | AWU_CSR_AWEN_DISABLE;
     AWU->TBR = (AWU->TBR & ~AWU_TBR_MASK) | AWU_TBR_NONE;
 }
 
+//-----------------------------------------------------------------------------
+// Disable the auto wakeup functionality
+//
 void Awu_Disable(void)
 {
     AWU->CSR = (AWU->CSR & ~AWU_CSR_AWEN_MASK) | AWU_CSR_AWEN_DISABLE;
 }
 
+//-----------------------------------------------------------------------------
+// Enable the auto wakeup functionality
+//
 void Awu_Enable(void)
 {
     AWU->CSR = (AWU->CSR & ~ AWU_CSR_AWEN_MASK) | AWU_CSR_AWEN_ENABLE;
@@ -1999,15 +2256,9 @@ __IO uint16_t systick;
 //
 // Setup 8-bit basic timer as 1ms system tick using interrupts to update the tick counter
 //
-// With 16Mhz HSI prescaler is 128 and reload value is 124. freq = 16000000/128 is 125Khz, therefore reload value is 125 - 1 or 124. Period is 125/125000 which is 0.001s or 1ms
-// With 8Mhz HSE prescaler is 64 and reload value is 124. freq is 8000000/64 is 125Khz.
-// With 128Khz LSI prescaler is 16 and reload value is 128. freq is 128000/16 is 8Khz.
-//
 void Systick_Init(void)
 {
-    //Tim4_Config(TIM4_PSCR_DIV1, 128);
-    //Tim4_Config(TIM4_PSCR_DIV64, 124);
-    Tim4_Config(TIM4_PSCR_DIV128, 124);
+    Tim4_Config1ms();
 }
 
 //-----------------------------------------------------------------------------
@@ -2057,9 +2308,15 @@ void TIM4_UPD_OVF_IRQHandler(void) __interrupt(23)
 //
 void Gpio_Config(void)
 {
+    // LED
     GPIOD->DDR |= GPIO_DDR_7_OUTPUT;
     GPIOD->CR1 |= GPIO_CR1_7_OUTPUT_PUSHPULL;
     GPIOD->CR2 |= GPIO_CR2_7_OUTPUT_2MHZ;
+
+    // BEEPER
+    GPIOD->DDR |= GPIO_DDR_4_OUTPUT;
+    GPIOD->CR1 |= GPIO_CR1_4_OUTPUT_PUSHPULL;
+    GPIOD->CR2 |= GPIO_CR2_4_OUTPUT_2MHZ;
 }
 
 //-----------------------------------------------------------------------------
@@ -2093,7 +2350,7 @@ void main(void)
 
     SysClock_HSI();
     Systick_Init();
-    Tim1_Config();
+    Tim1_ConfigPWM();
     Gpio_Config();
     Uart2_Config9600_8N1();
 
@@ -2101,6 +2358,9 @@ void main(void)
 
     //CircBuf_Init(&tx_cirbuf, tx_buffer, 32);
 
+    Beep_SetFrequency(BEEP_4KHZ);
+    Beep_On();
+    
     for (;;)
     {
         // Flash the LED if PD7 is connected
@@ -2151,12 +2411,16 @@ void main(void)
 #endif
         // Output a message using interrupts and a circular buffer
 #ifdef SERIALIZER
-        if (Systick_Timeout(&transmitter, 500))
-        {
-            Uart2_SendString("The quick brown fox jumps over the lazy dog Pack my box with five dozen liquor jugs 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz\r\n");
+        //if (Systick_Timeout(&transmitter, 10))
+        {            
+            static uint32_t i = 0;
+            Uart2_OutputInt(i);
+            Uart2_OutputString(" \r");
+            ++i;
+            //Uart2_OutputString("The quick brown fox jumps over the lazy dog Pack my box with five dozen liquor jugs 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz\r\n");
         }
 
-        Tim1_SetCounter((TIM1_PERIOD * 100) / (10000 / ((CircBuf_Used(&tx_cirbuf) * 100) / 32)));
+        Tim1_SetCounter((TIM1_PERIOD * 100) /  CircBuf_PercentUsed(&tx_cirbuf));
 #endif
     }
 }
