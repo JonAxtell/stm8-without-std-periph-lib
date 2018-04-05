@@ -866,38 +866,46 @@ typedef struct
 #define TIM1_IER_UIE_ENABLE     ((uint8_t)0x01)
 
 #define TIM1_SR1_BIF_MASK       ((uint8_t)0x80) /* Break Interrupt Flag mask. */
+#define TIM1_SR1_BIF_CLEAR      ((uint8_t)0x00)
 #define TIM1_SR1_BIF_NONE       ((uint8_t)0x00)
 #define TIM1_SR1_BIF_DETECTED   ((uint8_t)0x80)
 
 #define TIM1_SR1_TIF_MASK       ((uint8_t)0x40) /* Trigger Interrupt Flag mask. */
+#define TIM1_SR1_TIF_CLEAR      ((uint8_t)0x00)
 #define TIM1_SR1_TIF_NONE       ((uint8_t)0x00)
 #define TIM1_SR1_TIF_PENDING    ((uint8_t)0x40)
 
 #define TIM1_SR1_COMIF_MASK     ((uint8_t)0x20) /* Commutation Interrupt Flag mask. */
+#define TIM1_SR1_COMIF_CLEAR    ((uint8_t)0x00)
 #define TIM1_SR1_COMIF_NONE     ((uint8_t)0x00)
 #define TIM1_SR1_COMIF_PENDING  ((uint8_t)0x20)
 
 #define TIM1_SR1_CC4IF_MASK     ((uint8_t)0x10) /* Capture/Compare 4 Interrupt Flag mask. */
+#define TIM1_SR1_CC4IF_CLEAR    ((uint8_t)0x00)
 #define TIM1_SR1_CC4IF_NONE     ((uint8_t)0x00)
 #define TIM1_SR1_CC4IF_MATCH    ((uint8_t)0x10) // Input
 #define TIM1_SR1_CC4IF_CAPTURE  ((uint8_t)0x10) // Output
 
 #define TIM1_SR1_CC3IF_MASK     ((uint8_t)0x08) /* Capture/Compare 3 Interrupt Flag mask. */
+#define TIM1_SR1_CC3IF_CLEAR    ((uint8_t)0x00)
 #define TIM1_SR1_CC3IF_NONE     ((uint8_t)0x00)
 #define TIM1_SR1_CC3IF_MATCH    ((uint8_t)0x08) // Input
 #define TIM1_SR1_CC3IF_CAPTURE  ((uint8_t)0x08) // Output
 
 #define TIM1_SR1_CC2IF_MASK     ((uint8_t)0x04) /* Capture/Compare 2 Interrupt Flag mask. */
+#define TIM1_SR1_CC2IF_CLEAR    ((uint8_t)0x00)
 #define TIM1_SR1_CC2IF_NONE     ((uint8_t)0x00)
 #define TIM1_SR1_CC2IF_MATCH    ((uint8_t)0x04) // Input
 #define TIM1_SR1_CC2IF_CAPTURE  ((uint8_t)0x04) // Output
 
 #define TIM1_SR1_CC1IF_MASK     ((uint8_t)0x02) /* Capture/Compare 1 Interrupt Flag mask. */
+#define TIM1_SR1_CC1IF_CLEAR    ((uint8_t)0x00)
 #define TIM1_SR1_CC1IF_NONE     ((uint8_t)0x00)
 #define TIM1_SR1_CC1IF_MATCH    ((uint8_t)0x02) // Input
 #define TIM1_SR1_CC1IF_CAPTURE  ((uint8_t)0x02) // Output
 
 #define TIM1_SR1_UIF_MASK       ((uint8_t)0x01) /* Update Interrupt Flag mask. */
+#define TIM1_SR1_UIF_CLEAR      ((uint8_t)0x00)
 #define TIM1_SR1_UIF_NONE       ((uint8_t)0x00)
 #define TIM1_SR1_UIF_PENDING    ((uint8_t)0x01)
 
@@ -950,13 +958,13 @@ typedef struct
 #define TIM1_EGR_UG_ENABLE      ((uint8_t)0x01)
 
 #define TIM1_CCMR_ICxPSC_MASK   ((uint8_t)0x0C) /* Input Capture x Prescaler mask. */
-#define TIM1_CCMR_ICxPSC_NONE   ((uint8_t)0x00)
+#define TIM1_CCMR_ICxPSC_DIV1   ((uint8_t)0x00)
 #define TIM1_CCMR_ICxPSC_DIV2   ((uint8_t)0x04)
 #define TIM1_CCMR_ICxPSC_DIV4   ((uint8_t)0x08)
 #define TIM1_CCMR_ICxPSC_DIV8   ((uint8_t)0x0C)
 
 #define TIM1_CCMR_ICxF_MASK     ((uint8_t)0xF0) /* Input Capture x Filter mask. */
-#define TIM1_CCMR_ICxF_DISABLE  ((uint8_t)0x00)
+#define TIM1_CCMR_ICxF_NONE     ((uint8_t)0x00)
 #define TIM1_CCMR_ICxF_DIV1_N2  ((uint8_t)0x10)
 #define TIM1_CCMR_ICxF_DIV1_N4  ((uint8_t)0x20)
 #define TIM1_CCMR_ICxF_DIV1_N8  ((uint8_t)0x30)
@@ -997,8 +1005,14 @@ typedef struct
 
 #define TIM1_CCMR_CCxS_MASK     ((uint8_t)0x03) /* Capture/Compare x Selection mask. */
 #define TIM1_CCMR_CCxS_OUTPUT   ((uint8_t)0x00)
-#define TIM1_CCMR_CCxS_IN_TI1FP2 ((uint8_t)0x01)
-#define TIM1_CCMR_CCxS_IN_TI2FP1 ((uint8_t)0x02)
+#define TIM1_CCMR_CCxS_IN_TI1FP1 ((uint8_t)0x01)    // Channel 1
+#define TIM1_CCMR_CCxS_IN_TI2FP1 ((uint8_t)0x02)    // Channel 1
+#define TIM1_CCMR_CCxS_IN_TI2FP2 ((uint8_t)0x01)    // Channel 2
+#define TIM1_CCMR_CCxS_IN_TI1FP2 ((uint8_t)0x02)    // Channel 2
+#define TIM1_CCMR_CCxS_IN_TI3FP3 ((uint8_t)0x01)    // Channel 3
+#define TIM1_CCMR_CCxS_IN_TI4FP3 ((uint8_t)0x02)    // Channel 3
+#define TIM1_CCMR_CCxS_IN_TI4FP4 ((uint8_t)0x01)    // Channel 4
+#define TIM1_CCMR_CCxS_IN_TI3FP4 ((uint8_t)0x02)    // Channel 5
 #define TIM1_CCMR_CCxS_IN_TRC   ((uint8_t)0x03)
 
 #define TIM1_CCER1_CC2NP_MASK   ((uint8_t)0x80) /* Capture/Compare 2 Complementary output Polarity mask. */
@@ -1009,9 +1023,13 @@ typedef struct
 #define TIM1_CCER1_CC2NE_DISABLE ((uint8_t)0x00)
 #define TIM1_CCER1_CC2NE_ENABLE ((uint8_t)0x40)
 
-#define TIM1_CCER1_CC2P_MASK    ((uint8_t)0x20) /* Capture/Compare 2 output Polarity mask. */
-#define TIM1_CCER1_CC2P_DISABLE ((uint8_t)0x00)
-#define TIM1_CCER1_CC2P_ENABLE  ((uint8_t)0x20)
+#define TIM1_CCER1_CC2P_MASK        ((uint8_t)0x20) /* Capture/Compare 2 output Polarity mask. */
+#define TIM1_CCER1_CC2P_HIGH        ((uint8_t)0x00) // When output on OC2
+#define TIM1_CCER1_CC2P_LOW         ((uint8_t)0x20)
+#define TIM1_CCER1_CC2P_HIGH_RISING ((uint8_t)0x00) // When input with trigger on T1F
+#define TIM1_CCER1_CC2P_LOW_FALLING ((uint8_t)0x20)
+#define TIM1_CCER1_CC2P_RISING      ((uint8_t)0x00) // When input with capture on T1F or T2F
+#define TIM1_CCER1_CC2P_FALLING     ((uint8_t)0x20)
 
 #define TIM1_CCER1_CC2E_MASK    ((uint8_t)0x10) /* Capture/Compare 2 output enable mask. */
 #define TIM1_CCER1_CC2E_DIABLE  ((uint8_t)0x00)
@@ -1025,17 +1043,25 @@ typedef struct
 #define TIM1_CCER1_CC1NE_DISABLE ((uint8_t)0x00)
 #define TIM1_CCER1_CC1NE_ENABLE ((uint8_t)0x04)
 
-#define TIM1_CCER1_CC1P_MASK    ((uint8_t)0x02) /* Capture/Compare 1 output Polarity mask. */
-#define TIM1_CCER1_CC1P_DISABLE ((uint8_t)0x00)
-#define TIM1_CCER1_CC1P_ENABLE  ((uint8_t)0x02)
+#define TIM1_CCER1_CC1P_MASK        ((uint8_t)0x02) /* Capture/Compare 1 output Polarity mask. */
+#define TIM1_CCER1_CC1P_HIGH        ((uint8_t)0x00) // When output on OC1
+#define TIM1_CCER1_CC1P_LOW         ((uint8_t)0x02)
+#define TIM1_CCER1_CC1P_HIGH_RISING ((uint8_t)0x00) // When input with trigger on T1F
+#define TIM1_CCER1_CC1P_LOW_FALLING ((uint8_t)0x02)
+#define TIM1_CCER1_CC1P_RISING      ((uint8_t)0x00) // When input with capture on T1F or T2F
+#define TIM1_CCER1_CC1P_FALLING     ((uint8_t)0x02)
 
 #define TIM1_CCER1_CC1E_MASK    ((uint8_t)0x01) /* Capture/Compare 1 output enable mask. */
 #define TIM1_CCER1_CC1E_DISABLE ((uint8_t)0x00)
 #define TIM1_CCER1_CC1E_ENABLE  ((uint8_t)0x01)
 
-#define TIM1_CCER2_CC4P_MASK    ((uint8_t)0x20) /* Capture/Compare 4 output Polarity mask. */
-#define TIM1_CCER2_CC4P_DISABLE  ((uint8_t)0x00)
-#define TIM1_CCER2_CC4P_ENABLE  ((uint8_t)0x20)
+#define TIM1_CCER2_CC4P_MASK        ((uint8_t)0x20) /* Capture/Compare 4 output Polarity mask. */
+#define TIM1_CCER2_CC4P_HIGH        ((uint8_t)0x00) // When output on OC4
+#define TIM1_CCER2_CC4P_LOW         ((uint8_t)0x20)
+#define TIM1_CCER2_CC4P_HIGH_RISING ((uint8_t)0x00) // When input with trigger on T1F
+#define TIM1_CCER2_CC4P_LOW_FALLING ((uint8_t)0x20)
+#define TIM1_CCER2_CC4P_RISING      ((uint8_t)0x00) // When input with capture on T1F or T2F
+#define TIM1_CCER2_CC4P_FALLING     ((uint8_t)0x20)
 
 #define TIM1_CCER2_CC4E_MASK    ((uint8_t)0x10) /* Capture/Compare 4 output enable mask. */
 #define TIM1_CCER2_CC4E_DISABLE ((uint8_t)0x00)
@@ -1049,9 +1075,13 @@ typedef struct
 #define TIM1_CCER2_CC3NE_DISABLE ((uint8_t)0x00)
 #define TIM1_CCER2_CC3NE_ENABLE ((uint8_t)0x04)
 
-#define TIM1_CCER2_CC3P_MASK    ((uint8_t)0x02) /* Capture/Compare 3 output Polarity mask. */
-#define TIM1_CCER2_CC3P_DISABLE ((uint8_t)0x00)
-#define TIM1_CCER2_CC3P_ENABLE  ((uint8_t)0x02)
+#define TIM1_CCER2_CC3P_MASK        ((uint8_t)0x02) /* Capture/Compare 3 output Polarity mask. */
+#define TIM1_CCER2_CC3P_HIGH        ((uint8_t)0x00) // When output on OC3
+#define TIM1_CCER2_CC3P_LOW         ((uint8_t)0x02)
+#define TIM1_CCER2_CC3P_HIGH_RISING ((uint8_t)0x00) // When input with trigger on T1F
+#define TIM1_CCER2_CC3P_LOW_FALLING ((uint8_t)0x02)
+#define TIM1_CCER2_CC3P_RISING      ((uint8_t)0x00) // When input with capture on T1F or T2F
+#define TIM1_CCER2_CC3P_FALLING     ((uint8_t)0x02)
 
 #define TIM1_CCER2_CC3E_MASK    ((uint8_t)0x01) /* Capture/Compare 3 output enable mask. */
 #define TIM1_CCER2_CC3E_DISABLE ((uint8_t)0x00)
@@ -1626,64 +1656,6 @@ uint32_t SysClock_GetClockFreq(void)
     return sysclock;
 }
 
-//-----------------------------------------------------------------------------
-/**
-  * @brief  Measure the LSI frequency using timer IC1 and update the calibration registers.
-  * @note   It is recommended to use a timer clock frequency of at least 10MHz in order 
-	*         to obtain a better in the LSI frequency measurement.
-  * @param  None
-  * @retval None
-  */
-#if 0
-uint32_t SysClock_MeasureLSI(void)
-{
-    uint32_t lsi_freq_hz = 0x0;
-    uint32_t fmaster = 0x0;
-    uint16_t ICValue1 = 0x0;
-    uint16_t ICValue2 = 0x0;
-
-    // Get master frequency 
-    fmaster = SysClock_GetClockFreq();
-
-    // Enable the LSI measurement: LSI clock connected to timer Input Capture 1 
-    AWU->CSR = (AWU->CSR & ~ AWU_CSR_MSR_MASK) | AWU_CSR_MSR_ENABLE;
-
-    // Measure the LSI frequency with TIMER Input Capture 1 
-
-    // Capture only every 8 events!!! 
-    // Enable capture of TI1 
-    TIM1_ICInit(TIM1_CHANNEL_1, TIM1_ICPOLARITY_RISING, TIM1_ICSELECTION_DIRECTTI, TIM1_ICPSC_DIV8, 0);
-
-    /* Enable TIM1 */
-    TIM1_Cmd(ENABLE);
-
-    /* wait a capture on cc1 */
-    while((TIM1->SR1 & TIM1_FLAG_CC1) != TIM1_FLAG_CC1);
-    /* Get CCR1 value*/
-    ICValue1 = TIM1_GetCapture1();
-    TIM1_ClearFlag(TIM1_FLAG_CC1);
-
-    /* wait a capture on cc1 */
-    while((TIM1->SR1 & TIM1_FLAG_CC1) != TIM1_FLAG_CC1);
-    /* Get CCR1 value*/
-    ICValue2 = TIM1_GetCapture1();
-    TIM1_ClearFlag(TIM1_FLAG_CC1);
-
-    /* Disable IC1 input capture */
-    TIM1->CCER1 &= (uint8_t)(~TIM1_CCER1_CC1E);
-    /* Disable timer2 */
-    TIM1_Cmd(DISABLE);
-  
-    /* Compute LSI clock frequency */
-    lsi_freq_hz = (8 * fmaster) / (ICValue2 - ICValue1);
-
-    /* Disable the LSI measurement: LSI clock disconnected from timer Input Capture 1 */
-    AWU->CSR = (AWU->CSR & ~AWU_CSR_MSR_MASK) | AWU_CSR_MSR_DISABLE;
-
-    return (lsi_freq_hz);
-}
-#endif
-
 //=============================================================================
 // Uart functions
 //
@@ -1947,11 +1919,48 @@ void _uitoa(unsigned int value, char* string, unsigned char radix)
 #define TIM1_CH3_DUTY       ((uint16_t)((TIM1_PERIOD * 0) / 100))
 
 //-----------------------------------------------------------------------------
+// Typedefs for API to timer
+//
+typedef enum
+{
+    TIM1_ICPSC_DIV1 = TIM1_CCMR_ICxPSC_DIV1,
+    TIM1_ICPSC_DIV2 = TIM1_CCMR_ICxPSC_DIV2,
+    TIM1_ICPSC_DIV4 = TIM1_CCMR_ICxPSC_DIV4,
+    TIM1_ICPSC_DIV8 = TIM1_CCMR_ICxPSC_DIV8
+} tim1_ic_prescaler_t;
+
+typedef enum
+{
+    TIM1_ICPOL_RISING  = 0,
+    TIM1_ICPOL_FALLING = 1
+} tim1_ic_polarity_t;
+
+typedef enum
+{
+    TIM1_ICFILT_NONE = TIM1_CCMR_ICxF_NONE,
+    TIM1_ICFILT_DIV1_N2 = TIM1_CCMR_ICxF_DIV1_N2,
+    TIM1_ICFILT_DIV1_N4 = TIM1_CCMR_ICxF_DIV1_N4,
+    TIM1_ICFILT_DIV1_N8 = TIM1_CCMR_ICxF_DIV1_N8,
+    TIM1_ICFILT_DIV2_N6 = TIM1_CCMR_ICxF_DIV2_N6,
+    TIM1_ICFILT_DIV2_N8 = TIM1_CCMR_ICxF_DIV2_N8,
+    TIM1_ICFILT_DIV4_N6 = TIM1_CCMR_ICxF_DIV4_N6,
+    TIM1_ICFILT_DIV4_N8 = TIM1_CCMR_ICxF_DIV4_N8,
+    TIM1_ICFILT_DIV8_N6 = TIM1_CCMR_ICxF_DIV8_N6,
+    TIM1_ICFILT_DIV8_N8 = TIM1_CCMR_ICxF_DIV8_N8,
+    TIM1_ICFILT_DIV16_N5 = TIM1_CCMR_ICxF_DIV16_N5,
+    TIM1_ICFILT_DIV16_N6 = TIM1_CCMR_ICxF_DIV16_N6,
+    TIM1_ICFILT_DIV16_N8 = TIM1_CCMR_ICxF_DIV16_N8,
+    TIM1_ICFILT_DIV32_N5 = TIM1_CCMR_ICxF_DIV32_N5,
+    TIM1_ICFILT_DIV32_N6 = TIM1_CCMR_ICxF_DIV32_N6,
+    TIM1_ICFILT_DIV32_N8 = TIM1_CCMR_ICxF_DIV32_N8
+} tim1_ic_filter_t;
+
+//-----------------------------------------------------------------------------
 // Set the auto-reload value
 //
 // Note that High register must be set first.
 //
-void Tim1_SetAutoReload(uint16_t period)
+inline void Tim1_SetAutoReload(uint16_t period)
 {
     TIM1->ARRH = ((period - 1) >> 8) & 0xFF;
     TIM1->ARRL = ((period - 1) >> 0) & 0xFF;
@@ -1962,7 +1971,7 @@ void Tim1_SetAutoReload(uint16_t period)
 //
 // Note that High register must be set first.
 //
-void Tim1_SetPrescaler(uint16_t division)
+inline void Tim1_SetPrescaler(uint16_t division)
 {
     TIM1->PSCRH = ((division - 1) >> 8) & 0xFF;
     TIM1->PSCRL = ((division - 1) >> 0) & 0xFF;
@@ -1973,19 +1982,128 @@ void Tim1_SetPrescaler(uint16_t division)
 //
 // Note that High register must be set first.
 //
-void Tim1_SetCounter(uint16_t counter)
+inline void Tim1_SetCounter(uint16_t counter)
 {
     TIM1->CCR3H = (counter >> 8) & 0xFF;
     TIM1->CCR3L = (counter >> 0) & 0xFF;
 }
 
 //-----------------------------------------------------------------------------
-// Configure the TIM1 timer 
+// Disable the timer
+//
+inline void Tim1_Disable(void)
+{
+    TIM1->CR1 = (TIM1->CR1 & ~TIM1_CR1_CEN_MASK) | TIM1_CR1_CEN_DISABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Enable the timer
+//
+inline void Tim1_Enable(void)
+{
+    TIM1->CR1 = (TIM1->CR1 & ~TIM1_CR1_CEN_MASK) | TIM1_CR1_CEN_ENABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Set the prescaler value for capture on channel 1
+//
+inline void Tim1_SetCapturePrescaler(tim1_ic_prescaler_t prescaler)
+{
+    TIM1->CCMR1 = (TIM1->CCMR1 & ~TIM1_CCMR_ICxPSC_MASK) | prescaler;
+}
+
+//-----------------------------------------------------------------------------
+// Wait for the capture flag on channel 1
+//
+inline void Tim1_WaitCapture1(void)
+{
+    while ((TIM1->SR1 & TIM1_SR1_CC1IF_MATCH) != TIM1_SR1_CC1IF_CAPTURE)
+    {
+    }
+}
+
+//-----------------------------------------------------------------------------
+// Get the capture/compare value for channel 1
+//
+inline uint16_t Tim1_GetCapture1Time(void)
+{
+    return (TIM1->CCR1H << 8) | TIM1->CCR1L;
+}
+
+//-----------------------------------------------------------------------------
+// Clear the capture flag for channel 1
+//
+inline void Tim1_ClearCapture1(void)
+{
+    TIM1->SR1 = (TIM1->SR1 & ~TIM1_SR1_CC1IF_MATCH) | TIM1_SR1_CC1IF_CLEAR;
+}
+
+//-----------------------------------------------------------------------------
+// Disable the capture on channel 1
+//
+inline void Tim1_DisableCapture1(void)
+{
+    TIM1->CCER1 = (TIM1->CCER1 & TIM1_CCER1_CC1E_MASK) | TIM1_CCER1_CC1E_DISABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Enable the capture on channel 1
+//
+inline void Tim1_EnableCapture1(void)
+{
+    TIM1->CCER1 = (TIM1->CCER1 & TIM1_CCER1_CC1E_MASK) | TIM1_CCER1_CC1E_ENABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Set the polarity of capture on channel 1
+//
+inline void Tim1_SetPolarityCapture1(tim1_ic_polarity_t polarity)
+{
+    switch (polarity)
+    {
+        case TIM1_ICPOL_RISING:
+        {
+            TIM1->CCER1 = (TIM1->CCER1 & TIM1_CCER1_CC1P_MASK) | TIM1_CCER1_CC1P_RISING;
+            break;
+        }
+        case TIM1_ICPOL_FALLING:
+        {
+            TIM1->CCER1 = (TIM1->CCER1 & TIM1_CCER1_CC1P_MASK) | TIM1_CCER1_CC1P_FALLING;
+            break;
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+// Set the polarity of capture on channel 1
+//
+inline void Tim1_SetFilterCapture1(tim1_ic_filter_t filter)
+{
+    TIM1->CCMR1 = (TIM1->CCMR1 & ~TIM1_CCMR_ICxF_MASK) | filter;
+}
+
+//-----------------------------------------------------------------------------
+// Configure channel 1 for input
+//
+inline void Tim1_ConfigCapture1(tim1_ic_polarity_t polarity, tim1_ic_filter_t filter)
+{
+    Tim1_DisableCapture1();
+
+    /* Select the Input and set the filter */
+    TIM1->CCMR1 = (TIM1->CCMR1 & ~TIM1_CCMR_CCxS_MASK) | TIM1_CCMR_CCxS_IN_TI1FP1;
+    Tim1_SetFilterCapture1(filter);
+    Tim1_SetPolarityCapture1(polarity);
+
+    Tim1_EnableCapture1();
+}
+
+//-----------------------------------------------------------------------------
+// Configure the TIM1 timer
 //
 void Tim1_Config(void)
 {
     // Disable to setup
-    TIM1->CR1 = (TIM1->CR1 & ~TIM1_CR1_CEN_MASK) | TIM1_CR1_CEN_DISABLE;
+    Tim1_Disable();
 
     // Set the auto-reload value
     Tim1_SetAutoReload(TIM1_PERIOD);
@@ -2002,7 +2120,7 @@ void Tim1_Config(void)
 
     TIM1->CCER2 = (TIM1->CCER2 & ~(TIM1_CCER2_CC3E_MASK | TIM1_CCER2_CC3NE_MASK | TIM1_CCER2_CC3P_MASK | TIM1_CCER2_CC3NP_MASK)) |
                     (TIM1_CCER2_CC3E_ENABLE) |
-                    (TIM1_CCER2_CC3P_ENABLE) |
+                    (TIM1_CCER2_CC3P_HIGH) |
                     (TIM1_CCER2_CC3NE_ENABLE) |
                     (TIM1_CCER2_CC3NP_ENABLE);
     TIM1->CCMR3 = (TIM1->CCMR3 & ~(TIM1_CCMR_OCxM_MASK | TIM1_CCMR_OCxPE_MASK)) | TIM1_CCMR_OCxM_PWM2 | TIM1_CCMR_OCxPE_ENABLE;
@@ -2012,7 +2130,7 @@ void Tim1_Config(void)
     TIM1->CCR3L = (TIM1_CH3_DUTY >> 0) & 0xFF;
     TIM1->BKR |= TIM1_BKR_MOE_ENABLE;
 
-    TIM1->CR1 = (TIM1->CR1 & ~TIM1_CR1_CEN_MASK) | TIM1_CR1_CEN_ENABLE;
+    Tim1_Enable();
 }
 
 //-----------------------------------------------------------------------------
@@ -2021,7 +2139,7 @@ void Tim1_Config(void)
 void Tim1_ConfigPWM(void)
 {
     // Disable to setup
-    TIM1->CR1 = (TIM1->CR1 & ~TIM1_CR1_CEN_MASK) | TIM1_CR1_CEN_DISABLE;
+    Tim1_Disable();
 
     // Set the auto-reload value
     Tim1_SetAutoReload(TIM1_PERIOD);
@@ -2038,7 +2156,7 @@ void Tim1_ConfigPWM(void)
 
     TIM1->CCER2 = (TIM1->CCER2 & ~(TIM1_CCER2_CC3E_MASK | TIM1_CCER2_CC3NE_MASK | TIM1_CCER2_CC3P_MASK | TIM1_CCER2_CC3NP_MASK)) |
                     (TIM1_CCER2_CC3E_ENABLE) |
-                    (TIM1_CCER2_CC3P_ENABLE) |
+                    (TIM1_CCER2_CC3P_HIGH) |
                     (TIM1_CCER2_CC3NE_ENABLE) |
                     (TIM1_CCER2_CC3NP_ENABLE);
     TIM1->CCMR3 = (TIM1->CCMR3 & ~(TIM1_CCMR_OCxM_MASK | TIM1_CCMR_OCxPE_MASK)) | TIM1_CCMR_OCxM_PWM2 | TIM1_CCMR_OCxPE_ENABLE;
@@ -2048,7 +2166,17 @@ void Tim1_ConfigPWM(void)
     TIM1->CCR3L = (TIM1_CH3_DUTY >> 0) & 0xFF;
     TIM1->BKR |= TIM1_BKR_MOE_ENABLE;
 
-    TIM1->CR1 = (TIM1->CR1 & ~TIM1_CR1_CEN_MASK) | TIM1_CR1_CEN_ENABLE;
+    Tim1_Enable();
+}
+
+inline void Tim4_Disable(void)
+{
+    TIM4->CR1 = (TIM4->CR1 & ~TIM4_CR1_CEN_MASK) | TIM4_CR1_CEN_DISABLE;
+}
+
+inline void Tim4_Enable(void)
+{
+    TIM4->CR1 = (TIM4->CR1 & ~TIM4_CR1_CEN_MASK) | TIM4_CR1_CEN_ENABLE;
 }
 
 //-----------------------------------------------------------------------------
@@ -2056,13 +2184,14 @@ void Tim1_ConfigPWM(void)
 //
 void Tim4_Config(uint8_t prescaler, uint8_t reload)
 {
-    TIM4->CR1 = (TIM4->CR1 & ~TIM4_CR1_CEN_MASK) | TIM4_CR1_CEN_DISABLE;
+    Tim4_Disable();
     TIM4->PSCR = prescaler;
     TIM4->ARR = reload;
     TIM4->SR1 = (TIM4->SR1 & ~TIM4_SR1_UIF_MASK) | TIM4_SR1_UIF_CLEAR;
     TIM4->IER = (TIM4->IER & ~TIM4_IER_UIE_MASK) | TIM4_IER_UIE_ENABLE;
     TIM4->CNTR = 0;
-    TIM4->CR1 = (TIM4->CR1 & ~(TIM4_CR1_ARPE_MASK | TIM4_CR1_CEN_MASK)) | TIM4_CR1_ARPE_ENABLE | TIM4_CR1_CEN_ENABLE;
+    TIM4->CR1 = (TIM4->CR1 & ~TIM4_CR1_ARPE_MASK) | TIM4_CR1_ARPE_ENABLE;
+    Tim4_Enable();
 }
 
 //-----------------------------------------------------------------------------
@@ -2242,6 +2371,59 @@ void Awu_Enable(void)
 }
 
 
+//-----------------------------------------------------------------------------
+/**
+  * @brief  Measure the LSI frequency using timer IC1 and update the calibration registers.
+  * @note   It is recommended to use a timer clock frequency of at least 10MHz in order
+    *         to obtain a better in the LSI frequency measurement.
+  * @param  None
+  * @retval None
+  */
+uint32_t AWU_MeasureLSI(void)
+{
+    uint32_t lsi_freq_hz = 0x0;
+    uint32_t fmaster = 0x0;
+    uint16_t ICValue1 = 0x0;
+    uint16_t ICValue2 = 0x0;
+
+    // Get master frequency
+    fmaster = SysClock_GetClockFreq();
+
+    // Enable the LSI measurement: LSI clock connected to timer Input Capture 1
+    AWU->CSR = (AWU->CSR & ~ AWU_CSR_MSR_MASK) | AWU_CSR_MSR_ENABLE;
+
+    // Measure the LSI frequency with TIMER Input Capture 1
+    // Capture only every 8 events!!!
+    // Enable capture of TI1
+    Tim1_EnableCapture1();
+    Tim1_ConfigCapture1(TIM1_ICPOL_RISING, TIM1_ICFILT_NONE);
+    Tim1_SetPrescaler(TIM1_ICPSC_DIV8);
+
+    // TIM1_ICInit(TIM1_CHANNEL_1, TIM1_ICPOLARITY_RISING, TIM1_ICSELECTION_DIRECTTI, TIM1_ICPSC_DIV8, 0);
+
+    Tim1_Enable();
+
+    Tim1_WaitCapture1();
+    ICValue1 = Tim1_GetCapture1Time();
+    Tim1_ClearCapture1();
+
+    Tim1_WaitCapture1();
+    ICValue2 = Tim1_GetCapture1Time();
+    Tim1_ClearCapture1();
+
+    Tim1_DisableCapture1();
+
+    Tim1_Disable();
+
+    /* Compute LSI clock frequency */
+    lsi_freq_hz = (8 * fmaster) / (ICValue2 - ICValue1);
+
+    /* Disable the LSI measurement: LSI clock disconnected from timer Input Capture 1 */
+    AWU->CSR = (AWU->CSR & ~AWU_CSR_MSR_MASK) | AWU_CSR_MSR_DISABLE;
+
+    return (lsi_freq_hz);
+}
+
 //=============================================================================
 // System Tick functions
 //
@@ -2360,7 +2542,7 @@ void main(void)
 
     Beep_SetFrequency(BEEP_4KHZ);
     Beep_On();
-    
+
     for (;;)
     {
         // Flash the LED if PD7 is connected
@@ -2412,7 +2594,7 @@ void main(void)
         // Output a message using interrupts and a circular buffer
 #ifdef SERIALIZER
         //if (Systick_Timeout(&transmitter, 10))
-        {            
+        {
             static uint32_t i = 0;
             Uart2_OutputInt(i);
             Uart2_OutputString(" \r");
