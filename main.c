@@ -29,22 +29,34 @@
  * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+ */
 
-//#define FLASHER
-//#define FADER
+#define FLASHER
+#define FADER
 #define SERIALIZER
+#define BEEPER
 
-// Some basic macros to make life easy
-#ifdef __gcc__
-#define __PACKED    __attribute((packed))
-#define __IO        volatile
+// Some basic macros to make life easy when using different compilers
+#if defined __IAR_SYSTEMS_ICC__
+// IAR
+#define __PACKED                __attribute((packed))
+#define __IO                    volatile
+#define CRITICAL
+#define INTERRUPT(f, x)	        __interrupt void f(void)
+#define disableInterrupts()     __asm("sim")
+#define enableInterrupts()      __asm("rim")
 #else
+// SDCC
 #define __PACKED
-#define __IO        volatile
+#define __IO                    volatile
+#define CRITICAL                __critical
+#define INTERRUPT(f, x)         void f(void) __interrupt(x)
+#define disableInterrupts()     __asm sim __endasm
+#define enableInterrupts()      __asm rim __endasm
 #endif
 
-// Some basic typedefs
+// Some basic types
+#define NULL    0
 typedef int bool;
 #define false   0
 #define true    (!false)
@@ -56,9 +68,15 @@ typedef unsigned short uint16_t;
 typedef unsigned long uint32_t;
 typedef unsigned int uint_t;
 
-// Some basic in-line assembly
-#define disableInterrupts       __asm sim __endasm
-#define enableInterrupts        __asm rim __endasm
+// Useful macros
+// Swap two bytes using the XOR method (requires the two bytes to be different otherwise zero is the result)
+#define swap_bytes(b1, b2)      \
+    if ((b1) != (b2))           \
+    {                           \
+        b1 = (b1) ^ (b2);       \
+        b2 = (b2) ^ (b1);       \
+        b1 = (b1) ^ (b2);       \
+    }
 
 //#############################################################################
 // Circular buffer functions
@@ -149,10 +167,10 @@ uint16_t CircBuf_PercentUsed(circular_buffer_t *buf)
 //
 typedef struct
 {
-    const uint8_t x[2];
-    const uint8_t y[2];
-    const uint8_t wafer;
-    const uint8_t lot[7];
+    const uint8_t X[2];
+    const uint8_t Y[2];
+    const uint8_t WAFER;
+    const uint8_t LOT[7];
 } stm8_uid_t;
 
 #define UID_BaseAddress         0x48CD
@@ -180,84 +198,84 @@ typedef struct
     __IO uint8_t SWIMCCR;  /* SWIM clock control register */
 } stm8_clk_t;
 
-#define CLK_BaseAddress         0x50C0
-#define CLK                     ((stm8_clk_t *)CLK_BaseAddress)
+#define CLK_BaseAddress             0x50C0
+#define CLK                         ((stm8_clk_t *)CLK_BaseAddress)
 
-#define CLK_ICKR_SWUAH_MASK     ((uint8_t)0x20) /* Slow Wake-up from Active Halt/Halt modes */
-#define CLK_ICKR_SWUAH_DISABLE  ((uint8_t)0x00)
-#define CLK_ICKR_SWUAH_ENABLE   ((uint8_t)0x20)
+#define CLK_ICKR_SWUAH_MASK         ((uint8_t)0x20) /* Slow Wake-up from Active Halt/Halt modes */
+#define CLK_ICKR_SWUAH_DISABLE      ((uint8_t)0x00)
+#define CLK_ICKR_SWUAH_ENABLE       ((uint8_t)0x20)
 
-#define CLK_ICKR_LSIRDY_MASK    ((uint8_t)0x10) /* Low speed internal oscillator ready */
-#define CLK_ICKR_LSIRDY_NOTREADY ((uint8_t)0x00)
-#define CLK_ICKR_LSIRDY_READY   ((uint8_t)0x10)
+#define CLK_ICKR_LSIRDY_MASK        ((uint8_t)0x10) /* Low speed internal oscillator ready */
+#define CLK_ICKR_LSIRDY_NOTREADY    ((uint8_t)0x00)
+#define CLK_ICKR_LSIRDY_READY       ((uint8_t)0x10)
 
-#define CLK_ICKR_LSIEN_MASK     ((uint8_t)0x08) /* Low speed internal RC oscillator enable */
-#define CLK_ICKR_LSIEN_DISABLE  ((uint8_t)0x00)
-#define CLK_ICKR_LSIEN_ENABLE   ((uint8_t)0x08)
+#define CLK_ICKR_LSIEN_MASK         ((uint8_t)0x08) /* Low speed internal RC oscillator enable */
+#define CLK_ICKR_LSIEN_DISABLE      ((uint8_t)0x00)
+#define CLK_ICKR_LSIEN_ENABLE       ((uint8_t)0x08)
+    
+#define CLK_ICKR_FHWU_MASK          ((uint8_t)0x04) /* Fast Wake-up from Active Halt/Halt mode */
+#define CLK_ICKR_FHWU_DISABLE       ((uint8_t)0x00)
+#define CLK_ICKR_FHWU_ENABLE        ((uint8_t)0x04)
 
-#define CLK_ICKR_FHWU_MASK      ((uint8_t)0x04) /* Fast Wake-up from Active Halt/Halt mode */
-#define CLK_ICKR_FHWU_DISABLE   ((uint8_t)0x00)
-#define CLK_ICKR_FHWU_ENABLE    ((uint8_t)0x04)
+#define CLK_ICKR_HSIRDY_MASK        ((uint8_t)0x02) /* High speed internal RC oscillator ready */
+#define CLK_ICKR_HSIRDY_NOTREADY    ((uint8_t)0x00)
+#define CLK_ICKR_HSIRDY_READY       ((uint8_t)0x02)
 
-#define CLK_ICKR_HSIRDY_MASK    ((uint8_t)0x02) /* High speed internal RC oscillator ready */
-#define CLK_ICKR_HSIRDY_NOTREADY ((uint8_t)0x00)
-#define CLK_ICKR_HSIRDY_READY   ((uint8_t)0x02)
+#define CLK_ICKR_HSIEN_MASK         ((uint8_t)0x01) /* High speed internal RC oscillator enable */
+#define CLK_ICKR_HSIEN_DISABLE      ((uint8_t)0x00)
+#define CLK_ICKR_HSIEN_ENABLE       ((uint8_t)0x01)
 
-#define CLK_ICKR_HSIEN_MASK     ((uint8_t)0x01) /* High speed internal RC oscillator enable */
-#define CLK_ICKR_HSIEN_DISABLE  ((uint8_t)0x00)
-#define CLK_ICKR_HSIEN_ENABLE   ((uint8_t)0x01)
+#define CLK_ECKR_HSERDY_MASK        ((uint8_t)0x02) /* High speed external crystal oscillator ready */
+#define CLK_ECKR_HSERDY_NOTREADY    ((uint8_t)0x00)
+#define CLK_ECKR_HSERDY_READY       ((uint8_t)0x02)
 
-#define CLK_ECKR_HSERDY_MASK    ((uint8_t)0x02) /* High speed external crystal oscillator ready */
-#define CLK_ECKR_HSERDY_NOTREADY ((uint8_t)0x00)
-#define CLK_ECKR_HSERDY_READY   ((uint8_t)0x02)
+#define CLK_ECKR_HSEEN_MASK         ((uint8_t)0x01) /* High speed external crystal oscillator enable */
+#define CLK_ECKR_HSEEN_DISABLE      ((uint8_t)0x01)
+#define CLK_ECKR_HSEEN_ENABLE       ((uint8_t)0x01)
 
-#define CLK_ECKR_HSEEN_MASK     ((uint8_t)0x01) /* High speed external crystal oscillator enable */
-#define CLK_ECKR_HSEEN_DISABLE  ((uint8_t)0x01)
-#define CLK_ECKR_HSEEN_ENABLE   ((uint8_t)0x01)
+#define CLK_CMSR_CKM_MASK           ((uint8_t)0xFF) /* Clock master status bits */
+#define CLK_CMSR_CKM_HSI            ((uint8_t)0xE1) /* Clock Source HSI. */
+#define CLK_CMSR_CKM_LSI            ((uint8_t)0xD2) /* Clock Source LSI. */
+#define CLK_CMSR_CKM_HSE            ((uint8_t)0xB4) /* Clock Source HSE. */
 
-#define CLK_CMSR_CKM_MASK       ((uint8_t)0xFF) /* Clock master status bits */
-#define CLK_CMSR_CKM_HSI        ((uint8_t)0xE1) /* Clock Source HSI. */
-#define CLK_CMSR_CKM_LSI        ((uint8_t)0xD2) /* Clock Source LSI. */
-#define CLK_CMSR_CKM_HSE        ((uint8_t)0xB4) /* Clock Source HSE. */
+#define CLK_SWR_SWI_MASK            ((uint8_t)0xFF) /* Clock master selection bits */
+#define CLK_SWR_SWI_HSI             ((uint8_t)0xE1) /* Clock Source HSI. */
+#define CLK_SWR_SWI_LSI             ((uint8_t)0xD2) /* Clock Source LSI. */
+#define CLK_SWR_SWI_HSE             ((uint8_t)0xB4) /* Clock Source HSE. */
 
-#define CLK_SWR_SWI_MASK        ((uint8_t)0xFF) /* Clock master selection bits */
-#define CLK_SWR_SWI_HSI         ((uint8_t)0xE1) /* Clock Source HSI. */
-#define CLK_SWR_SWI_LSI         ((uint8_t)0xD2) /* Clock Source LSI. */
-#define CLK_SWR_SWI_HSE         ((uint8_t)0xB4) /* Clock Source HSE. */
+#define CLK_SWCR_SWIF_MASK          ((uint8_t)0x08) /* Clock switch interrupt flag */
+#define CLK_SWCR_SWIF_NOTREADY      ((uint8_t)0x00) // manual
+#define CLK_SWCR_SWIF_READY         ((uint8_t)0x08)
+#define CLK_SWCR_SWIF_NOOCCURANCE   ((uint8_t)0x00) // auto
+#define CLK_SWCR_SWIF_OCCURED       ((uint8_t)0x08)
 
-#define CLK_SWCR_SWIF_MASK      ((uint8_t)0x08) /* Clock switch interrupt flag */
-#define CLK_SWCR_SWIF_NOTREADY  ((uint8_t)0x00) // manual
-#define CLK_SWCR_SWIF_READY     ((uint8_t)0x08)
-#define CLK_SWCR_SWIF_NOOCCURANCE ((uint8_t)0x00) // auto
-#define CLK_SWCR_SWIF_OCCURED   ((uint8_t)0x08)
+#define CLK_SWCR_SWIEN_MASK         ((uint8_t)0x04) /* Clock switch interrupt enable */
+#define CLK_SWCR_SWIEN_DISABLE      ((uint8_t)0x00)
+#define CLK_SWCR_SWIEN_ENABLE       ((uint8_t)0x04)
 
-#define CLK_SWCR_SWIEN_MASK     ((uint8_t)0x04) /* Clock switch interrupt enable */
-#define CLK_SWCR_SWIEN_DISABLE  ((uint8_t)0x00)
-#define CLK_SWCR_SWIEN_ENABLE   ((uint8_t)0x04)
+#define CLK_SWCR_SWEN_MASK          ((uint8_t)0x02) /* Switch start/stop */
+#define CLK_SWCR_SWEN_MANUAL        ((uint8_t)0x00)
+#define CLK_SWCR_SWEN_AUTOMATIC     ((uint8_t)0x02)
 
-#define CLK_SWCR_SWEN_MASK      ((uint8_t)0x02) /* Switch start/stop */
-#define CLK_SWCR_SWEN_MANUAL    ((uint8_t)0x00)
-#define CLK_SWCR_SWEN_AUTOMATIC ((uint8_t)0x02)
+#define CLK_SWCR_SWBSY_MASK         ((uint8_t)0x01) /* Switch busy flag*/
+#define CLK_SWCR_SWBSY_NOTBUSY      ((uint8_t)0x00)
+#define CLK_SWCR_SWBSY_BUSY         ((uint8_t)0x01)
 
-#define CLK_SWCR_SWBSY_MASK     ((uint8_t)0x01) /* Switch busy flag*/
-#define CLK_SWCR_SWBSY_NOTBUSY  ((uint8_t)0x00)
-#define CLK_SWCR_SWBSY_BUSY     ((uint8_t)0x01)
+#define CLK_CKDIVR_HSIDIV_MASK      ((uint8_t)0x18) /* High speed internal clock prescaler */
+#define CLK_CKDIVR_HSIDIV1          ((uint8_t)0x00) /* High speed internal clock prescaler: 1 */
+#define CLK_CKDIVR_HSIDIV2          ((uint8_t)0x08) /* High speed internal clock prescaler: 2 */
+#define CLK_CKDIVR_HSIDIV4          ((uint8_t)0x10) /* High speed internal clock prescaler: 4 */
+#define CLK_CKDIVR_HSIDIV8          ((uint8_t)0x18) /* High speed internal clock prescaler: 8 */
 
-#define CLK_CKDIVR_HSIDIV_MASK  ((uint8_t)0x18) /* High speed internal clock prescaler */
-#define CLK_CKDIVR_HSIDIV1      ((uint8_t)0x00) /* High speed internal clock prescaler: 1 */
-#define CLK_CKDIVR_HSIDIV2      ((uint8_t)0x08) /* High speed internal clock prescaler: 2 */
-#define CLK_CKDIVR_HSIDIV4      ((uint8_t)0x10) /* High speed internal clock prescaler: 4 */
-#define CLK_CKDIVR_HSIDIV8      ((uint8_t)0x18) /* High speed internal clock prescaler: 8 */
-
-#define CLK_CKDIVR_CPUDIV_MASK  ((uint8_t)0x07) /* CPU clock prescaler */
-#define CLK_CKDIVR_CPUDIV1      ((uint8_t)0x00) /* CPU clock division factors 1 */
-#define CLK_CKDIVR_CPUDIV2      ((uint8_t)0x01) /* CPU clock division factors 2 */
-#define CLK_CKDIVR_CPUDIV4      ((uint8_t)0x02) /* CPU clock division factors 4 */
-#define CLK_CKDIVR_CPUDIV8      ((uint8_t)0x03) /* CPU clock division factors 8 */
-#define CLK_CKDIVR_CPUDIV16     ((uint8_t)0x04) /* CPU clock division factors 16 */
-#define CLK_CKDIVR_CPUDIV32     ((uint8_t)0x05) /* CPU clock division factors 32 */
-#define CLK_CKDIVR_CPUDIV64     ((uint8_t)0x06) /* CPU clock division factors 64 */
-#define CLK_CKDIVR_CPUDIV128    ((uint8_t)0x07) /* CPU clock division factors 128 */
+#define CLK_CKDIVR_CPUDIV_MASK      ((uint8_t)0x07) /* CPU clock prescaler */
+#define CLK_CKDIVR_CPUDIV1          ((uint8_t)0x00) /* CPU clock division factors 1 */
+#define CLK_CKDIVR_CPUDIV2          ((uint8_t)0x01) /* CPU clock division factors 2 */
+#define CLK_CKDIVR_CPUDIV4          ((uint8_t)0x02) /* CPU clock division factors 4 */
+#define CLK_CKDIVR_CPUDIV8          ((uint8_t)0x03) /* CPU clock division factors 8 */
+#define CLK_CKDIVR_CPUDIV16         ((uint8_t)0x04) /* CPU clock division factors 16 */
+#define CLK_CKDIVR_CPUDIV32         ((uint8_t)0x05) /* CPU clock division factors 32 */
+#define CLK_CKDIVR_CPUDIV64         ((uint8_t)0x06) /* CPU clock division factors 64 */
+#define CLK_CKDIVR_CPUDIV128        ((uint8_t)0x07) /* CPU clock division factors 128 */
 
 #define CLK_PCKENR1_MASK            ((uint8_t)0xFF)
 #define CLK_PCKENR1_TIM1            ((uint8_t)0x80) /* Timer 1 clock enable */
@@ -529,9 +547,9 @@ typedef struct
 #define BEEP                    ((stm8_beep_t *)BEEP_BaseAddress)
 
 #define BEEP_CSR_SEL_MASK       0xC0        // Selection
-#define BEEP_CSR_SEL_1KHZ       0x00
-#define BEEP_CSR_SEL_2KHZ       0x40
-#define BEEP_CSR_SEL_4KHZ       0x80
+#define BEEP_CSR_SEL_8KHZ       0x00
+#define BEEP_CSR_SEL_16KHZ      0x40
+#define BEEP_CSR_SEL_32KHZ      0x80
 
 #define BEEP_CSR_EN_MASK        0x20        // Enable
 #define BEEP_CSR_EN_DISABLE     0x00
@@ -724,304 +742,306 @@ typedef struct
     __IO uint8_t OISR;  /* Output idle register */
 } stm8_tim1_t;
 
-#define TIM1_BaseAddress        0x5250
-#define TIM2_BaseAddress        0x5300
-#define TIM3_BaseAddress        0x5320
-#define TIM5_BaseAddress        0x5300
-#define TIM6_BaseAddress        0x5340
-#define TIM1                    ((stm8_tim1_t *)TIM1_BaseAddress)
+#define TIM1_BaseAddress            0x5250
+#define TIM2_BaseAddress            0x5300
+#define TIM3_BaseAddress            0x5320
+#define TIM5_BaseAddress            0x5300
+#define TIM6_BaseAddress            0x5340
+#define TIM1                        ((stm8_tim1_t *)TIM1_BaseAddress)
 
-#define TIM1_CR1_ARPE_MASK      ((uint8_t)0x80) /* Auto-Reload Preload Enable mask. */
-#define TIM1_CR1_ARPE_DISABLE   ((uint8_t)0x00)
-#define TIM1_CR1_ARPE_ENABLE    ((uint8_t)0x80)
+#define TIM1_CR1_ARPE_MASK          ((uint8_t)0x80) /* Auto-Reload Preload Enable mask. */
+#define TIM1_CR1_ARPE_DISABLE       ((uint8_t)0x00)
+#define TIM1_CR1_ARPE_ENABLE        ((uint8_t)0x80)
 
-#define TIM1_CR1_CMS_MASK       ((uint8_t)0x60) /* Center-aligned Mode Selection mask. */
-#define TIM1_CR1_CMS_EDGE       ((uint8_t)0x00)
-#define TIM1_CR1_CMS_CENTER1    ((uint8_t)0x20)
-#define TIM1_CR1_CMS_CENTER2    ((uint8_t)0x40)
-#define TIM1_CR1_CMS_CENTER3    ((uint8_t)0x60)
+#define TIM1_CR1_CMS_MASK           ((uint8_t)0x60) /* Center-aligned Mode Selection mask. */
+#define TIM1_CR1_CMS_EDGE           ((uint8_t)0x00)
+#define TIM1_CR1_CMS_CENTER1        ((uint8_t)0x20)
+#define TIM1_CR1_CMS_CENTER2        ((uint8_t)0x40)
+#define TIM1_CR1_CMS_CENTER3        ((uint8_t)0x60)
 
-#define TIM1_CR1_DIR_MASK       ((uint8_t)0x10) /* Direction mask. */
-#define TIM1_CR1_DIR_UP         ((uint8_t)0x00)
-#define TIM1_CR1_DIR_DOWN       ((uint8_t)0x10)
+#define TIM1_CR1_DIR_MASK           ((uint8_t)0x10) /* Direction mask. */
+#define TIM1_CR1_DIR_UP             ((uint8_t)0x00)
+#define TIM1_CR1_DIR_DOWN           ((uint8_t)0x10)
 
-#define TIM1_CR1_OPM_MASK       ((uint8_t)0x08) /* One Pulse Mode mask. */
-#define TIM1_CR1_OPM_DISABLE    ((uint8_t)0x00)
-#define TIM1_CR1_OPM_ENABLE     ((uint8_t)0x08)
+#define TIM1_CR1_OPM_MASK           ((uint8_t)0x08) /* One Pulse Mode mask. */
+#define TIM1_CR1_OPM_DISABLE        ((uint8_t)0x00)
+#define TIM1_CR1_OPM_ENABLE         ((uint8_t)0x08)
 
-#define TIM1_CR1_URS_MASK       ((uint8_t)0x04) /* Update Request Source mask. */
-#define TIM1_CR1_URS_ALL        ((uint8_t)0x00)
-#define TIM1_CR1_URS_UPDATE     ((uint8_t)0x04)
+#define TIM1_CR1_URS_MASK           ((uint8_t)0x04) /* Update Request Source mask. */
+#define TIM1_CR1_URS_ALL            ((uint8_t)0x00)
+#define TIM1_CR1_URS_UPDATE         ((uint8_t)0x04)
 
-#define TIM1_CR1_UDIS_MASK      ((uint8_t)0x02) /* Update DIsable mask. */
-#define TIM1_CR1_UDIS_DISABLE   ((uint8_t)0x00)
-#define TIM1_CR1_UDIS_ENABLE    ((uint8_t)0x02)
+#define TIM1_CR1_UDIS_MASK          ((uint8_t)0x02) /* Update DIsable mask. */
+#define TIM1_CR1_UDIS_DISABLE       ((uint8_t)0x00)
+#define TIM1_CR1_UDIS_ENABLE        ((uint8_t)0x02)
 
-#define TIM1_CR1_CEN_MASK       ((uint8_t)0x01) /* Counter Enable mask. */
-#define TIM1_CR1_CEN_DISABLE    ((uint8_t)0x00)
-#define TIM1_CR1_CEN_ENABLE     ((uint8_t)0x01)
+#define TIM1_CR1_CEN_MASK           ((uint8_t)0x01) /* Counter Enable mask. */
+#define TIM1_CR1_CEN_DISABLE        ((uint8_t)0x00)
+#define TIM1_CR1_CEN_ENABLE         ((uint8_t)0x01)
 
-#define TIM1_CR2_MMS_MASK       ((uint8_t)0x70) /* MMS Selection mask. */
-#define TIM1_CR2_MMS_RESET      ((uint8_t)0x00)
-#define TIM1_CR2_MMS_ENABLE     ((uint8_t)0x10)
-#define TIM1_CR2_MMS_UPDATE     ((uint8_t)0x20)
-#define TIM1_CR2_MMS_OC1        ((uint8_t)0x30)
-#define TIM1_CR2_MMS_OC1REF     ((uint8_t)0x40)
-#define TIM1_CR2_MMS_OC2REF     ((uint8_t)0x50)
-#define TIM1_CR2_MMS_OC3REF     ((uint8_t)0x60)
-#define TIM1_CR2_MMS_OC4REF     ((uint8_t)0x70)
+#define TIM1_CR2_MMS_MASK           ((uint8_t)0x70) /* MMS Selection mask. */
+#define TIM1_CR2_MMS_RESET          ((uint8_t)0x00)
+#define TIM1_CR2_MMS_ENABLE         ((uint8_t)0x10)
+#define TIM1_CR2_MMS_UPDATE         ((uint8_t)0x20)
+#define TIM1_CR2_MMS_OC1            ((uint8_t)0x30)
+#define TIM1_CR2_MMS_OC1REF         ((uint8_t)0x40)
+#define TIM1_CR2_MMS_OC2REF         ((uint8_t)0x50)
+#define TIM1_CR2_MMS_OC3REF         ((uint8_t)0x60)
+#define TIM1_CR2_MMS_OC4REF         ((uint8_t)0x70)
 
-#define TIM1_CR2_COMS_MASK      ((uint8_t)0x04) /* Capture/Compare Control Update Selection mask. */
-#define TIM1_CR2_COMS_COMG      ((uint8_t)0x00)
-#define TIM1_CR2_COMS_ALL       ((uint8_t)0x04)
+#define TIM1_CR2_COMS_MASK          ((uint8_t)0x04) /* Capture/Compare Control Update Selection mask. */
+#define TIM1_CR2_COMS_COMG          ((uint8_t)0x00)
+#define TIM1_CR2_COMS_ALL           ((uint8_t)0x04)
 
-#define TIM1_CR2_CCPC_MASK      ((uint8_t)0x01) /* Capture/Compare Preloaded Control mask. */
-#define TIM1_CR2_CCPC_NOTPRELOAD ((uint8_t)0x00)
-#define TIM1_CR2_CCPC_PRELOADED ((uint8_t)0x01)
+#define TIM1_CR2_CCPC_MASK          ((uint8_t)0x01) /* Capture/Compare Preloaded Control mask. */
+#define TIM1_CR2_CCPC_NOTPRELOAD    ((uint8_t)0x00)
+#define TIM1_CR2_CCPC_PRELOADED     ((uint8_t)0x01)
 
-#define TIM1_SMCR_MSM_MASK      ((uint8_t)0x80) /* Master/Slave Mode mask. */
-#define TIM1_SMCR_MSM_DISABLE   ((uint8_t)0x00)
-#define TIM1_SMCR_MSM_ENABLE    ((uint8_t)0x80)
+#define TIM1_SMCR_MSM_MASK          ((uint8_t)0x80) /* Master/Slave Mode mask. */
+#define TIM1_SMCR_MSM_DISABLE       ((uint8_t)0x00)
+#define TIM1_SMCR_MSM_ENABLE        ((uint8_t)0x80)
 
-#define TIM1_SMCR_TS_MASK       ((uint8_t)0x70) /* Trigger Selection mask. */
-#define TIM1_SMCR_TS_TIM6       ((uint8_t)0x00)  /* TRIG Input source =  TIM6 TRIG Output  */
-#define TIM1_SMCR_TS_TIM5       ((uint8_t)0x30)  /* TRIG Input source =  TIM5 TRIG Output  */
-#define TIM1_SMCR_TS_TI1F_ED    ((uint8_t)0x40)
-#define TIM1_SMCR_TS_TI1FP1     ((uint8_t)0x50)
-#define TIM1_SMCR_TS_TI2FP2     ((uint8_t)0x60)
-#define TIM1_SMCR_TS_ETRF       ((uint8_t)0x70)
+#define TIM1_SMCR_TS_MASK           ((uint8_t)0x70) /* Trigger Selection mask. */
+#define TIM1_SMCR_TS_TIM6           ((uint8_t)0x00)  /* TRIG Input source =  TIM6 TRIG Output  */
+#define TIM1_SMCR_TS_TIM5           ((uint8_t)0x30)  /* TRIG Input source =  TIM5 TRIG Output  */
+#define TIM1_SMCR_TS_TI1F_ED        ((uint8_t)0x40)
+#define TIM1_SMCR_TS_TI1FP1         ((uint8_t)0x50)
+#define TIM1_SMCR_TS_TI2FP2         ((uint8_t)0x60)
+#define TIM1_SMCR_TS_ETRF           ((uint8_t)0x70)
 
-#define TIM1_SMCR_SMS_MASK      ((uint8_t)0x07) /* Slave Mode Selection mask. */
-#define TIM1_SMCR_SMS_DISABLE   ((uint8_t)0x00)
-#define TIM1_SMCR_SMS_ENCODER1  ((uint8_t)0x01)
-#define TIM1_SMCR_SMS_ENCODER2  ((uint8_t)0x02)
-#define TIM1_SMCR_SMS_ENCODER3  ((uint8_t)0x03)
-#define TIM1_SMCR_SMS_RESET     ((uint8_t)0x04)
-#define TIM1_SMCR_SMS_GATED     ((uint8_t)0x05)
-#define TIM1_SMCR_SMS_TRIGGER   ((uint8_t)0x06)
-#define TIM1_SMCR_SMS_EXTERNAL1 ((uint8_t)0x07)
+#define TIM1_SMCR_SMS_MASK          ((uint8_t)0x07) /* Slave Mode Selection mask. */
+#define TIM1_SMCR_SMS_DISABLE       ((uint8_t)0x00)
+#define TIM1_SMCR_SMS_ENCODER1      ((uint8_t)0x01)
+#define TIM1_SMCR_SMS_ENCODER2      ((uint8_t)0x02)
+#define TIM1_SMCR_SMS_ENCODER3      ((uint8_t)0x03)
+#define TIM1_SMCR_SMS_RESET         ((uint8_t)0x04)
+#define TIM1_SMCR_SMS_GATED         ((uint8_t)0x05)
+#define TIM1_SMCR_SMS_TRIGGER       ((uint8_t)0x06)
+#define TIM1_SMCR_SMS_EXTERNAL1     ((uint8_t)0x07)
 
-#define TIM1_ETR_ETP_MASK       ((uint8_t)0x80) /* External Trigger Polarity mask. */
-#define TIM1_ETR_ETP_NOTINVERTED ((uint8_t)0x00)
-#define TIM1_ETR_ETP_INVERTED   ((uint8_t)0x80)
+#define TIM1_ETR_ETP_MASK           ((uint8_t)0x80) /* External Trigger Polarity mask. */
+#define TIM1_ETR_ETP_NOTINVERTED    ((uint8_t)0x00)
+#define TIM1_ETR_ETP_INVERTED       ((uint8_t)0x80)
 
-#define TIM1_ETR_ECE_MASK       ((uint8_t)0x40) /* External Clock mask. */
-#define TIM1_ETR_ECE_DISABLE    ((uint8_t)0x00)
-#define TIM1_ETR_ECE_ENABLE     ((uint8_t)0x40)
+#define TIM1_ETR_ECE_MASK           ((uint8_t)0x40) /* External Clock mask. */
+#define TIM1_ETR_ECE_DISABLE        ((uint8_t)0x00)
+#define TIM1_ETR_ECE_ENABLE         ((uint8_t)0x40)
 
-#define TIM1_ETR_ETPS_MASK      ((uint8_t)0x30) /* External Trigger Prescaler mask. */
-#define TIM1_ETR_ETPS_OFF       ((uint8_t)0x00)
-#define TIM1_ETR_ETPS_DIV2      ((uint8_t)0x10)
-#define TIM1_ETR_ETPS_DIV4      ((uint8_t)0x20)
-#define TIM1_ETR_ETPS_DIV8      ((uint8_t)0x30)
+#define TIM1_ETR_ETPS_MASK          ((uint8_t)0x30) /* External Trigger Prescaler mask. */
+#define TIM1_ETR_ETPS_OFF           ((uint8_t)0x00)
+#define TIM1_ETR_ETPS_DIV2          ((uint8_t)0x10)
+#define TIM1_ETR_ETPS_DIV4          ((uint8_t)0x20)
+#define TIM1_ETR_ETPS_DIV8          ((uint8_t)0x30)
 
-#define TIM1_ETR_ETF_MASK       ((uint8_t)0x0F) /* External Trigger Filter mask. */
-#define TIM1_ETR_ETF_DISABLE    ((uint8_t)0x00)
-#define TIM1_ETR_ETF_DIV1_N2    ((uint8_t)0x01)
-#define TIM1_ETR_ETF_DIV1_N4    ((uint8_t)0x02)
-#define TIM1_ETR_ETF_DIV1_N8    ((uint8_t)0x03)
-#define TIM1_ETR_ETF_DIV2_N6    ((uint8_t)0x04)
-#define TIM1_ETR_ETF_DIV2_N8    ((uint8_t)0x05)
-#define TIM1_ETR_ETF_DIV4_N6    ((uint8_t)0x06)
-#define TIM1_ETR_ETF_DIV4_N8    ((uint8_t)0x07)
-#define TIM1_ETR_ETF_DIV8_N6    ((uint8_t)0x08)
-#define TIM1_ETR_ETF_DIV8_N8    ((uint8_t)0x09)
-#define TIM1_ETR_ETF_DIV16_N5   ((uint8_t)0x0A)
-#define TIM1_ETR_ETF_DIV16_N6   ((uint8_t)0x0B)
-#define TIM1_ETR_ETF_DIV16_N8   ((uint8_t)0x0C)
-#define TIM1_ETR_ETF_DIV32_N5   ((uint8_t)0x0D)
-#define TIM1_ETR_ETF_DIV32_N6   ((uint8_t)0x0E)
-#define TIM1_ETR_ETF_DIV32_N8   ((uint8_t)0x0F)
+#define TIM1_ETR_ETF_MASK           ((uint8_t)0x0F) /* External Trigger Filter mask. */
+#define TIM1_ETR_ETF_DISABLE        ((uint8_t)0x00)
+#define TIM1_ETR_ETF_DIV1_N2        ((uint8_t)0x01)
+#define TIM1_ETR_ETF_DIV1_N4        ((uint8_t)0x02)
+#define TIM1_ETR_ETF_DIV1_N8        ((uint8_t)0x03)
+#define TIM1_ETR_ETF_DIV2_N6        ((uint8_t)0x04)
+#define TIM1_ETR_ETF_DIV2_N8        ((uint8_t)0x05)
+#define TIM1_ETR_ETF_DIV4_N6        ((uint8_t)0x06)
+#define TIM1_ETR_ETF_DIV4_N8        ((uint8_t)0x07)
+#define TIM1_ETR_ETF_DIV8_N6        ((uint8_t)0x08)
+#define TIM1_ETR_ETF_DIV8_N8        ((uint8_t)0x09)
+#define TIM1_ETR_ETF_DIV16_N5       ((uint8_t)0x0A)
+#define TIM1_ETR_ETF_DIV16_N6       ((uint8_t)0x0B)
+#define TIM1_ETR_ETF_DIV16_N8       ((uint8_t)0x0C)
+#define TIM1_ETR_ETF_DIV32_N5       ((uint8_t)0x0D)
+#define TIM1_ETR_ETF_DIV32_N6       ((uint8_t)0x0E)
+#define TIM1_ETR_ETF_DIV32_N8       ((uint8_t)0x0F)
 
-#define TIM1_IER_BIE_MASK       ((uint8_t)0x80) /* Break Interrupt Enable mask. */
-#define TIM1_IER_BIE_DISABLE    ((uint8_t)0x00)
-#define TIM1_IER_BIE_ENABLE     ((uint8_t)0x80)
+#define TIM1_IER_BIE_MASK           ((uint8_t)0x80) /* Break Interrupt Enable mask. */
+#define TIM1_IER_BIE_DISABLE        ((uint8_t)0x00)
+#define TIM1_IER_BIE_ENABLE         ((uint8_t)0x80)
 
-#define TIM1_IER_TIE_MASK       ((uint8_t)0x40) /* Trigger Interrupt Enable mask. */
-#define TIM1_IER_TIE_DISABLE    ((uint8_t)0x00)
-#define TIM1_IER_TIE_ENABLE     ((uint8_t)0x40)
+#define TIM1_IER_TIE_MASK           ((uint8_t)0x40) /* Trigger Interrupt Enable mask. */
+#define TIM1_IER_TIE_DISABLE        ((uint8_t)0x00)
+#define TIM1_IER_TIE_ENABLE         ((uint8_t)0x40)
 
-#define TIM1_IER_COMIE_MASK     ((uint8_t)0x20) /*  Commutation Interrupt Enable mask.*/
-#define TIM1_IER_COMIE_DISABLE  ((uint8_t)0x00)
-#define TIM1_IER_COMIE_ENABLE   ((uint8_t)0x20)
+#define TIM1_IER_COMIE_MASK         ((uint8_t)0x20) /*  Commutation Interrupt Enable mask.*/
+#define TIM1_IER_COMIE_DISABLE      ((uint8_t)0x00)
+#define TIM1_IER_COMIE_ENABLE       ((uint8_t)0x20)
 
-#define TIM1_IER_CC4IE_MASK     ((uint8_t)0x10) /* Capture/Compare 4 Interrupt Enable mask. */
-#define TIM1_IER_CC4IE_DISABLE  ((uint8_t)0x00)
-#define TIM1_IER_CC4IE_ENABLE   ((uint8_t)0x10)
+#define TIM1_IER_CC4IE_MASK         ((uint8_t)0x10) /* Capture/Compare 4 Interrupt Enable mask. */
+#define TIM1_IER_CC4IE_DISABLE      ((uint8_t)0x00)
+#define TIM1_IER_CC4IE_ENABLE       ((uint8_t)0x10)
 
-#define TIM1_IER_CC3IE_MASK     ((uint8_t)0x08) /* Capture/Compare 3 Interrupt Enable mask. */
-#define TIM1_IER_CC3IE_DISABLE  ((uint8_t)0x00)
-#define TIM1_IER_CC3IE_ENABLE   ((uint8_t)0x08)
+#define TIM1_IER_CC3IE_MASK         ((uint8_t)0x08) /* Capture/Compare 3 Interrupt Enable mask. */
+#define TIM1_IER_CC3IE_DISABLE      ((uint8_t)0x00)
+#define TIM1_IER_CC3IE_ENABLE       ((uint8_t)0x08)
 
-#define TIM1_IER_CC2IE_MASK     ((uint8_t)0x04) /* Capture/Compare 2 Interrupt Enable mask. */
-#define TIM1_IER_CC2IE_DISABLE  ((uint8_t)0x00)
-#define TIM1_IER_CC2IE_ENABLE   ((uint8_t)0x04)
+#define TIM1_IER_CC2IE_MASK         ((uint8_t)0x04) /* Capture/Compare 2 Interrupt Enable mask. */
+#define TIM1_IER_CC2IE_DISABLE      ((uint8_t)0x00)
+#define TIM1_IER_CC2IE_ENABLE       ((uint8_t)0x04)
 
-#define TIM1_IER_CC1IE_MASK     ((uint8_t)0x02) /* Capture/Compare 1 Interrupt Enable mask. */
-#define TIM1_IER_CC1IE_DISABLE  ((uint8_t)0x00)
-#define TIM1_IER_CC1IE_ENABLE   ((uint8_t)0x02)
+#define TIM1_IER_CC1IE_MASK         ((uint8_t)0x02) /* Capture/Compare 1 Interrupt Enable mask. */
+#define TIM1_IER_CC1IE_DISABLE      ((uint8_t)0x00)
+#define TIM1_IER_CC1IE_ENABLE       ((uint8_t)0x02)
 
-#define TIM1_IER_UIE_MASK       ((uint8_t)0x01) /* Update Interrupt Enable mask. */
-#define TIM1_IER_UIE_DISABLE    ((uint8_t)0x00)
-#define TIM1_IER_UIE_ENABLE     ((uint8_t)0x01)
+#define TIM1_IER_UIE_MASK           ((uint8_t)0x01) /* Update Interrupt Enable mask. */
+#define TIM1_IER_UIE_DISABLE        ((uint8_t)0x00)
+#define TIM1_IER_UIE_ENABLE         ((uint8_t)0x01)
 
-#define TIM1_SR1_BIF_MASK       ((uint8_t)0x80) /* Break Interrupt Flag mask. */
-#define TIM1_SR1_BIF_CLEAR      ((uint8_t)0x00)
-#define TIM1_SR1_BIF_NONE       ((uint8_t)0x00)
-#define TIM1_SR1_BIF_DETECTED   ((uint8_t)0x80)
+#define TIM1_SR1_BIF_MASK           ((uint8_t)0x80) /* Break Interrupt Flag mask. */
+#define TIM1_SR1_BIF_CLEAR          ((uint8_t)0x00)
+#define TIM1_SR1_BIF_NONE           ((uint8_t)0x00)
+#define TIM1_SR1_BIF_DETECTED       ((uint8_t)0x80)
 
-#define TIM1_SR1_TIF_MASK       ((uint8_t)0x40) /* Trigger Interrupt Flag mask. */
-#define TIM1_SR1_TIF_CLEAR      ((uint8_t)0x00)
-#define TIM1_SR1_TIF_NONE       ((uint8_t)0x00)
-#define TIM1_SR1_TIF_PENDING    ((uint8_t)0x40)
+#define TIM1_SR1_TIF_MASK           ((uint8_t)0x40) /* Trigger Interrupt Flag mask. */
+#define TIM1_SR1_TIF_CLEAR          ((uint8_t)0x00)
+#define TIM1_SR1_TIF_NONE           ((uint8_t)0x00)
+#define TIM1_SR1_TIF_PENDING        ((uint8_t)0x40)
 
-#define TIM1_SR1_COMIF_MASK     ((uint8_t)0x20) /* Commutation Interrupt Flag mask. */
-#define TIM1_SR1_COMIF_CLEAR    ((uint8_t)0x00)
-#define TIM1_SR1_COMIF_NONE     ((uint8_t)0x00)
-#define TIM1_SR1_COMIF_PENDING  ((uint8_t)0x20)
+#define TIM1_SR1_COMIF_MASK         ((uint8_t)0x20) /* Commutation Interrupt Flag mask. */
+#define TIM1_SR1_COMIF_CLEAR        ((uint8_t)0x00)
+#define TIM1_SR1_COMIF_NONE         ((uint8_t)0x00)
+#define TIM1_SR1_COMIF_PENDING      ((uint8_t)0x20)
 
-#define TIM1_SR1_CC4IF_MASK     ((uint8_t)0x10) /* Capture/Compare 4 Interrupt Flag mask. */
-#define TIM1_SR1_CC4IF_CLEAR    ((uint8_t)0x00)
-#define TIM1_SR1_CC4IF_NONE     ((uint8_t)0x00)
-#define TIM1_SR1_CC4IF_MATCH    ((uint8_t)0x10) // Input
-#define TIM1_SR1_CC4IF_CAPTURE  ((uint8_t)0x10) // Output
+#define TIM1_SR1_CC4IF_MASK         ((uint8_t)0x10) /* Capture/Compare 4 Interrupt Flag mask. */
+#define TIM1_SR1_CC4IF_CLEAR        ((uint8_t)0x00)
+#define TIM1_SR1_CC4IF_NONE         ((uint8_t)0x00)
+#define TIM1_SR1_CC4IF_MATCH        ((uint8_t)0x10) // Input
+#define TIM1_SR1_CC4IF_CAPTURE      ((uint8_t)0x10) // Output
 
-#define TIM1_SR1_CC3IF_MASK     ((uint8_t)0x08) /* Capture/Compare 3 Interrupt Flag mask. */
-#define TIM1_SR1_CC3IF_CLEAR    ((uint8_t)0x00)
-#define TIM1_SR1_CC3IF_NONE     ((uint8_t)0x00)
-#define TIM1_SR1_CC3IF_MATCH    ((uint8_t)0x08) // Input
-#define TIM1_SR1_CC3IF_CAPTURE  ((uint8_t)0x08) // Output
+#define TIM1_SR1_CC3IF_MASK         ((uint8_t)0x08) /* Capture/Compare 3 Interrupt Flag mask. */
+#define TIM1_SR1_CC3IF_CLEAR        ((uint8_t)0x00)
+#define TIM1_SR1_CC3IF_NONE         ((uint8_t)0x00)
+#define TIM1_SR1_CC3IF_MATCH        ((uint8_t)0x08) // Input
+#define TIM1_SR1_CC3IF_CAPTURE      ((uint8_t)0x08) // Output
 
-#define TIM1_SR1_CC2IF_MASK     ((uint8_t)0x04) /* Capture/Compare 2 Interrupt Flag mask. */
-#define TIM1_SR1_CC2IF_CLEAR    ((uint8_t)0x00)
-#define TIM1_SR1_CC2IF_NONE     ((uint8_t)0x00)
-#define TIM1_SR1_CC2IF_MATCH    ((uint8_t)0x04) // Input
-#define TIM1_SR1_CC2IF_CAPTURE  ((uint8_t)0x04) // Output
+#define TIM1_SR1_CC2IF_MASK         ((uint8_t)0x04) /* Capture/Compare 2 Interrupt Flag mask. */
+#define TIM1_SR1_CC2IF_CLEAR        ((uint8_t)0x00)
+#define TIM1_SR1_CC2IF_NONE         ((uint8_t)0x00)
+#define TIM1_SR1_CC2IF_MATCH        ((uint8_t)0x04) // Input
+#define TIM1_SR1_CC2IF_CAPTURE      ((uint8_t)0x04) // Output
 
-#define TIM1_SR1_CC1IF_MASK     ((uint8_t)0x02) /* Capture/Compare 1 Interrupt Flag mask. */
-#define TIM1_SR1_CC1IF_CLEAR    ((uint8_t)0x00)
-#define TIM1_SR1_CC1IF_NONE     ((uint8_t)0x00)
-#define TIM1_SR1_CC1IF_MATCH    ((uint8_t)0x02) // Input
-#define TIM1_SR1_CC1IF_CAPTURE  ((uint8_t)0x02) // Output
+#define TIM1_SR1_CC1IF_MASK         ((uint8_t)0x02) /* Capture/Compare 1 Interrupt Flag mask. */
+#define TIM1_SR1_CC1IF_CLEAR        ((uint8_t)0x00)
+#define TIM1_SR1_CC1IF_NONE         ((uint8_t)0x00)
+#define TIM1_SR1_CC1IF_MATCH        ((uint8_t)0x02) // Input
+#define TIM1_SR1_CC1IF_CAPTURE      ((uint8_t)0x02) // Output
 
-#define TIM1_SR1_UIF_MASK       ((uint8_t)0x01) /* Update Interrupt Flag mask. */
-#define TIM1_SR1_UIF_CLEAR      ((uint8_t)0x00)
-#define TIM1_SR1_UIF_NONE       ((uint8_t)0x00)
-#define TIM1_SR1_UIF_PENDING    ((uint8_t)0x01)
+#define TIM1_SR1_UIF_MASK           ((uint8_t)0x01) /* Update Interrupt Flag mask. */
+#define TIM1_SR1_UIF_CLEAR          ((uint8_t)0x00)
+#define TIM1_SR1_UIF_NONE           ((uint8_t)0x00)
+#define TIM1_SR1_UIF_PENDING        ((uint8_t)0x01)
 
-#define TIM1_SR2_CC4OF_MASK     ((uint8_t)0x10) /* Capture/Compare 4 Overcapture Flag mask. */
-#define TIM1_SR2_CC4OF_NONE     ((uint8_t)0x00)
-#define TIM1_SR2_CC4OF_DETECTED ((uint8_t)0x10)
+#define TIM1_SR2_CC4OF_MASK         ((uint8_t)0x10) /* Capture/Compare 4 Overcapture Flag mask. */
+#define TIM1_SR2_CC4OF_NONE         ((uint8_t)0x00)
+#define TIM1_SR2_CC4OF_DETECTED     ((uint8_t)0x10)
 
-#define TIM1_SR2_CC3OF_MASK     ((uint8_t)0x08) /* Capture/Compare 3 Overcapture Flag mask. */
-#define TIM1_SR2_CC3OF_NONE     ((uint8_t)0x00)
-#define TIM1_SR2_CC3OF_DETECTED ((uint8_t)0x08)
+#define TIM1_SR2_CC3OF_MASK         ((uint8_t)0x08) /* Capture/Compare 3 Overcapture Flag mask. */
+#define TIM1_SR2_CC3OF_NONE         ((uint8_t)0x00)
+#define TIM1_SR2_CC3OF_DETECTED     ((uint8_t)0x08)
 
-#define TIM1_SR2_CC2OF_MASK     ((uint8_t)0x04) /* Capture/Compare 2 Overcapture Flag mask. */
-#define TIM1_SR2_CC2OF_NONE     ((uint8_t)0x00)
-#define TIM1_SR2_CC2OF_DETECTED ((uint8_t)0x04)
+#define TIM1_SR2_CC2OF_MASK         ((uint8_t)0x04) /* Capture/Compare 2 Overcapture Flag mask. */
+#define TIM1_SR2_CC2OF_NONE         ((uint8_t)0x00)
+#define TIM1_SR2_CC2OF_DETECTED     ((uint8_t)0x04)
 
-#define TIM1_SR2_CC1OF_MASK     ((uint8_t)0x02) /* Capture/Compare 1 Overcapture Flag mask. */
-#define TIM1_SR2_CC1OF_NONE     ((uint8_t)0x00)
-#define TIM1_SR2_CC1OF_DETECTED ((uint8_t)0x02)
+#define TIM1_SR2_CC1OF_MASK         ((uint8_t)0x02) /* Capture/Compare 1 Overcapture Flag mask. */
+#define TIM1_SR2_CC1OF_NONE         ((uint8_t)0x00)
+#define TIM1_SR2_CC1OF_DETECTED     ((uint8_t)0x02)
 
-#define TIM1_EGR_BG_MASK        ((uint8_t)0x80) /* Break Generation mask. */
-#define TIM1_EGR_BG_DISABLE     ((uint8_t)0x00)
-#define TIM1_EGR_BG_ENABLE      ((uint8_t)0x80)
+#define TIM1_EGR_BG_MASK            ((uint8_t)0x80) /* Break Generation mask. */
+#define TIM1_EGR_BG_DISABLE         ((uint8_t)0x00)
+#define TIM1_EGR_BG_ENABLE          ((uint8_t)0x80)
 
-#define TIM1_EGR_TG_MASK        ((uint8_t)0x40) /* Trigger Generation mask. */
-#define TIM1_EGR_TG_DISABLE     ((uint8_t)0x00)
-#define TIM1_EGR_TG_ENABLE      ((uint8_t)0x40)
+#define TIM1_EGR_TG_MASK            ((uint8_t)0x40) /* Trigger Generation mask. */
+#define TIM1_EGR_TG_DISABLE         ((uint8_t)0x00)
+#define TIM1_EGR_TG_ENABLE          ((uint8_t)0x40)
 
-#define TIM1_EGR_COMG_MASK      ((uint8_t)0x20) /* Capture/Compare Control Update Generation mask. */
-#define TIM1_EGR_COMG_DISABLE   ((uint8_t)0x00)
-#define TIM1_EGR_COMG_ENABLE    ((uint8_t)0x20)
+#define TIM1_EGR_COMG_MASK          ((uint8_t)0x20) /* Capture/Compare Control Update Generation mask. */
+#define TIM1_EGR_COMG_DISABLE       ((uint8_t)0x00)
+#define TIM1_EGR_COMG_ENABLE        ((uint8_t)0x20)
 
-#define TIM1_EGR_CC4G_MASK      ((uint8_t)0x10) /* Capture/Compare 4 Generation mask. */
-#define TIM1_EGR_CC4G_DISABLE   ((uint8_t)0x00)
-#define TIM1_EGR_CC4G_ENABLE    ((uint8_t)0x10)
+#define TIM1_EGR_CC4G_MASK          ((uint8_t)0x10) /* Capture/Compare 4 Generation mask. */
+#define TIM1_EGR_CC4G_DISABLE       ((uint8_t)0x00)
+#define TIM1_EGR_CC4G_ENABLE        ((uint8_t)0x10)
 
-#define TIM1_EGR_CC3G_MASK      ((uint8_t)0x08) /* Capture/Compare 3 Generation mask. */
-#define TIM1_EGR_CC3G_DISABLE   ((uint8_t)0x00)
-#define TIM1_EGR_CC3G_ENABLE    ((uint8_t)0x08)
+#define TIM1_EGR_CC3G_MASK          ((uint8_t)0x08) /* Capture/Compare 3 Generation mask. */
+#define TIM1_EGR_CC3G_DISABLE       ((uint8_t)0x00)
+#define TIM1_EGR_CC3G_ENABLE        ((uint8_t)0x08)
 
-#define TIM1_EGR_CC2G_MASK      ((uint8_t)0x04) /* Capture/Compare 2 Generation mask. */
-#define TIM1_EGR_CC2G_DISABLE   ((uint8_t)0x00)
-#define TIM1_EGR_CC2G_ENABLE    ((uint8_t)0x04)
+#define TIM1_EGR_CC2G_MASK          ((uint8_t)0x04) /* Capture/Compare 2 Generation mask. */
+#define TIM1_EGR_CC2G_DISABLE       ((uint8_t)0x00)
+#define TIM1_EGR_CC2G_ENABLE        ((uint8_t)0x04)
 
-#define TIM1_EGR_CC1G_MASK      ((uint8_t)0x02) /* Capture/Compare 1 Generation mask. */
-#define TIM1_EGR_CC1G_DISABLE   ((uint8_t)0x00)
-#define TIM1_EGR_CC1G_ENABLE    ((uint8_t)0x02)
+#define TIM1_EGR_CC1G_MASK          ((uint8_t)0x02) /* Capture/Compare 1 Generation mask. */
+#define TIM1_EGR_CC1G_DISABLE       ((uint8_t)0x00)
+#define TIM1_EGR_CC1G_ENABLE        ((uint8_t)0x02)
 
-#define TIM1_EGR_UG_MASK        ((uint8_t)0x01) /* Update Generation mask. */
-#define TIM1_EGR_UG_DISABLE     ((uint8_t)0x00)
-#define TIM1_EGR_UG_ENABLE      ((uint8_t)0x01)
+#define TIM1_EGR_UG_MASK            ((uint8_t)0x01) /* Update Generation mask. */
+#define TIM1_EGR_UG_DISABLE         ((uint8_t)0x00)
+#define TIM1_EGR_UG_ENABLE          ((uint8_t)0x01)
 
-#define TIM1_CCMR_ICxPSC_MASK   ((uint8_t)0x0C) /* Input Capture x Prescaler mask. */
-#define TIM1_CCMR_ICxPSC_DIV1   ((uint8_t)0x00)
-#define TIM1_CCMR_ICxPSC_DIV2   ((uint8_t)0x04)
-#define TIM1_CCMR_ICxPSC_DIV4   ((uint8_t)0x08)
-#define TIM1_CCMR_ICxPSC_DIV8   ((uint8_t)0x0C)
+#define TIM1_CCMR_ICxPSC_MASK       ((uint8_t)0x0C) /* Input Capture x Prescaler mask. */
+#define TIM1_CCMR_ICxPSC_DIV1       ((uint8_t)0x00)
+#define TIM1_CCMR_ICxPSC_DIV2       ((uint8_t)0x04)
+#define TIM1_CCMR_ICxPSC_DIV4       ((uint8_t)0x08)
+#define TIM1_CCMR_ICxPSC_DIV8       ((uint8_t)0x0C)
 
-#define TIM1_CCMR_ICxF_MASK     ((uint8_t)0xF0) /* Input Capture x Filter mask. */
-#define TIM1_CCMR_ICxF_NONE     ((uint8_t)0x00)
-#define TIM1_CCMR_ICxF_DIV1_N2  ((uint8_t)0x10)
-#define TIM1_CCMR_ICxF_DIV1_N4  ((uint8_t)0x20)
-#define TIM1_CCMR_ICxF_DIV1_N8  ((uint8_t)0x30)
-#define TIM1_CCMR_ICxF_DIV2_N6  ((uint8_t)0x40)
-#define TIM1_CCMR_ICxF_DIV2_N8  ((uint8_t)0x50)
-#define TIM1_CCMR_ICxF_DIV4_N6  ((uint8_t)0x60)
-#define TIM1_CCMR_ICxF_DIV4_N8  ((uint8_t)0x70)
-#define TIM1_CCMR_ICxF_DIV8_N6  ((uint8_t)0x80)
-#define TIM1_CCMR_ICxF_DIV8_N8  ((uint8_t)0x90)
-#define TIM1_CCMR_ICxF_DIV16_N5 ((uint8_t)0xA0)
-#define TIM1_CCMR_ICxF_DIV16_N6 ((uint8_t)0xB0)
-#define TIM1_CCMR_ICxF_DIV16_N8 ((uint8_t)0xC0)
-#define TIM1_CCMR_ICxF_DIV32_N5 ((uint8_t)0xD0)
-#define TIM1_CCMR_ICxF_DIV32_N6 ((uint8_t)0xE0)
-#define TIM1_CCMR_ICxF_DIV32_N8 ((uint8_t)0xF0)
+#define TIM1_CCMR_ICxF_MASK         ((uint8_t)0xF0) /* Input Capture x Filter mask. */
+#define TIM1_CCMR_ICxF_NONE         ((uint8_t)0x00)
+#define TIM1_CCMR_ICxF_DIV1_N2      ((uint8_t)0x10)
+#define TIM1_CCMR_ICxF_DIV1_N4      ((uint8_t)0x20)
+#define TIM1_CCMR_ICxF_DIV1_N8      ((uint8_t)0x30)
+#define TIM1_CCMR_ICxF_DIV2_N6      ((uint8_t)0x40)
+#define TIM1_CCMR_ICxF_DIV2_N8      ((uint8_t)0x50)
+#define TIM1_CCMR_ICxF_DIV4_N6      ((uint8_t)0x60)
+#define TIM1_CCMR_ICxF_DIV4_N8      ((uint8_t)0x70)
+#define TIM1_CCMR_ICxF_DIV8_N6      ((uint8_t)0x80)
+#define TIM1_CCMR_ICxF_DIV8_N8      ((uint8_t)0x90)
+#define TIM1_CCMR_ICxF_DIV16_N5     ((uint8_t)0xA0)
+#define TIM1_CCMR_ICxF_DIV16_N6     ((uint8_t)0xB0)
+#define TIM1_CCMR_ICxF_DIV16_N8     ((uint8_t)0xC0)
+#define TIM1_CCMR_ICxF_DIV32_N5     ((uint8_t)0xD0)
+#define TIM1_CCMR_ICxF_DIV32_N6     ((uint8_t)0xE0)
+#define TIM1_CCMR_ICxF_DIV32_N8     ((uint8_t)0xF0)
 
-#define TIM1_CCMR_OCxCE_MASK    ((uint8_t)0x80) /* Output Compare x Clear Enable mask. */
-#define TIM1_CCMR_OCxCE_DISABLE ((uint8_t)0x00)
-#define TIM1_CCMR_OCxCE_ENABLE  ((uint8_t)0x80)
+#define TIM1_CCMR_OCxCE_MASK        ((uint8_t)0x80) /* Output Compare x Clear Enable mask. */
+#define TIM1_CCMR_OCxCE_DISABLE     ((uint8_t)0x00)
+#define TIM1_CCMR_OCxCE_ENABLE      ((uint8_t)0x80)
 
-#define TIM1_CCMR_OCxM_MASK     ((uint8_t)0x70) /* Output Compare x Mode mask. */
-#define TIM1_CCMR_OCxM_FROZEN   ((uint8_t)0x00)
-#define TIM1_CCMR_OCxM_ACTIVE   ((uint8_t)0x10)
-#define TIM1_CCMR_OCxM_INACTIVE ((uint8_t)0x20)
-#define TIM1_CCMR_OCxM_TOGGLE   ((uint8_t)0x30)
-#define TIM1_CCMR_OCxM_FORCELOW ((uint8_t)0x40)
-#define TIM1_CCMR_OCxM_FORCEHIGH ((uint8_t)0x50)
-#define TIM1_CCMR_OCxM_PWM1     ((uint8_t)0x60)
-#define TIM1_CCMR_OCxM_PWM2     ((uint8_t)0x70)
+#define TIM1_CCMR_OCxM_MASK         ((uint8_t)0x70) /* Output Compare x Mode mask. */
+#define TIM1_CCMR_OCxM_FROZEN       ((uint8_t)0x00)
+#define TIM1_CCMR_OCxM_ACTIVE       ((uint8_t)0x10)
+#define TIM1_CCMR_OCxM_INACTIVE     ((uint8_t)0x20)
+#define TIM1_CCMR_OCxM_TOGGLE       ((uint8_t)0x30)
+#define TIM1_CCMR_OCxM_FORCELOW     ((uint8_t)0x40)
+#define TIM1_CCMR_OCxM_FORCEHIGH    ((uint8_t)0x50)
+#define TIM1_CCMR_OCxM_PWM1         ((uint8_t)0x60)
+#define TIM1_CCMR_OCxM_PWM2         ((uint8_t)0x70)
 
-#define TIM1_CCMR_OCxPE_MASK    ((uint8_t)0x08) /* Output Compare x Preload Enable mask. */
-#define TIM1_CCMR_OCxPE_DISABLE ((uint8_t)0x00)
-#define TIM1_CCMR_OCxPE_ENABLE  ((uint8_t)0x08)
+#define TIM1_CCMR_OCxPE_MASK        ((uint8_t)0x08) /* Output Compare x Preload Enable mask. */
+#define TIM1_CCMR_OCxPE_DISABLE     ((uint8_t)0x00)
+#define TIM1_CCMR_OCxPE_ENABLE      ((uint8_t)0x08)
 
-#define TIM1_CCMR_OCxFE_MASK    ((uint8_t)0x04) /* Output Compare x Fast Enable mask. */
-#define TIM1_CCMR_OCxFE_DISABLE ((uint8_t)0x00)
-#define TIM1_CCMR_OCxFE_ENABLE  ((uint8_t)0x04)
+#define TIM1_CCMR_OCxFE_MASK        ((uint8_t)0x04) /* Output Compare x Fast Enable mask. */
+#define TIM1_CCMR_OCxFE_DISABLE     ((uint8_t)0x00)
+#define TIM1_CCMR_OCxFE_ENABLE      ((uint8_t)0x04)
 
-#define TIM1_CCMR_CCxS_MASK     ((uint8_t)0x03) /* Capture/Compare x Selection mask. */
-#define TIM1_CCMR_CCxS_OUTPUT   ((uint8_t)0x00)
-#define TIM1_CCMR_CCxS_IN_TI1FP1 ((uint8_t)0x01)    // Channel 1
-#define TIM1_CCMR_CCxS_IN_TI2FP1 ((uint8_t)0x02)    // Channel 1
-#define TIM1_CCMR_CCxS_IN_TI2FP2 ((uint8_t)0x01)    // Channel 2
-#define TIM1_CCMR_CCxS_IN_TI1FP2 ((uint8_t)0x02)    // Channel 2
-#define TIM1_CCMR_CCxS_IN_TI3FP3 ((uint8_t)0x01)    // Channel 3
-#define TIM1_CCMR_CCxS_IN_TI4FP3 ((uint8_t)0x02)    // Channel 3
-#define TIM1_CCMR_CCxS_IN_TI4FP4 ((uint8_t)0x01)    // Channel 4
-#define TIM1_CCMR_CCxS_IN_TI3FP4 ((uint8_t)0x02)    // Channel 5
-#define TIM1_CCMR_CCxS_IN_TRC   ((uint8_t)0x03)
+#define TIM1_CCMR_CCxS_MASK         ((uint8_t)0x03) /* Capture/Compare x Selection mask. */
+#define TIM1_CCMR_CCxS_OUTPUT       ((uint8_t)0x00)
+#define TIM1_CCMR_CCxS_DIRECT       ((uint8_t)0x01)
+#define TIM1_CCMR_CCxS_INDIRECT     ((uint8_t)0x02)
+#define TIM1_CCMR_CCxS_IN_TI1FP1    ((uint8_t)0x01)    // Channel 1
+#define TIM1_CCMR_CCxS_IN_TI2FP1    ((uint8_t)0x02)    // Channel 1
+#define TIM1_CCMR_CCxS_IN_TI2FP2    ((uint8_t)0x01)    // Channel 2
+#define TIM1_CCMR_CCxS_IN_TI1FP2    ((uint8_t)0x02)    // Channel 2
+#define TIM1_CCMR_CCxS_IN_TI3FP3    ((uint8_t)0x01)    // Channel 3
+#define TIM1_CCMR_CCxS_IN_TI4FP3    ((uint8_t)0x02)    // Channel 3
+#define TIM1_CCMR_CCxS_IN_TI4FP4    ((uint8_t)0x01)    // Channel 4
+#define TIM1_CCMR_CCxS_IN_TI3FP4    ((uint8_t)0x02)    // Channel 5
+#define TIM1_CCMR_CCxS_IN_TRC       ((uint8_t)0x03)
 
-#define TIM1_CCER1_CC2NP_MASK   ((uint8_t)0x80) /* Capture/Compare 2 Complementary output Polarity mask. */
-#define TIM1_CCER1_CC2NP_DISABLE ((uint8_t)0x00)
-#define TIM1_CCER1_CC2NP_ENABLE ((uint8_t)0x80)
+#define TIM1_CCER1_CC2NP_MASK       ((uint8_t)0x80) /* Capture/Compare 2 Complementary output Polarity mask. */
+#define TIM1_CCER1_CC2NP_DISABLE    ((uint8_t)0x00)
+#define TIM1_CCER1_CC2NP_ENABLE     ((uint8_t)0x80)
 
-#define TIM1_CCER1_CC2NE_MASK   ((uint8_t)0x40) /* Capture/Compare 2 Complementary output enable mask. */
-#define TIM1_CCER1_CC2NE_DISABLE ((uint8_t)0x00)
-#define TIM1_CCER1_CC2NE_ENABLE ((uint8_t)0x40)
+#define TIM1_CCER1_CC2NE_MASK       ((uint8_t)0x40) /* Capture/Compare 2 Complementary output enable mask. */
+#define TIM1_CCER1_CC2NE_DISABLE    ((uint8_t)0x00)
+#define TIM1_CCER1_CC2NE_ENABLE     ((uint8_t)0x40)
 
 #define TIM1_CCER1_CC2P_MASK        ((uint8_t)0x20) /* Capture/Compare 2 output Polarity mask. */
 #define TIM1_CCER1_CC2P_HIGH        ((uint8_t)0x00) // When output on OC2
@@ -1031,17 +1051,17 @@ typedef struct
 #define TIM1_CCER1_CC2P_RISING      ((uint8_t)0x00) // When input with capture on T1F or T2F
 #define TIM1_CCER1_CC2P_FALLING     ((uint8_t)0x20)
 
-#define TIM1_CCER1_CC2E_MASK    ((uint8_t)0x10) /* Capture/Compare 2 output enable mask. */
-#define TIM1_CCER1_CC2E_DIABLE  ((uint8_t)0x00)
-#define TIM1_CCER1_CC2E_ENABLE  ((uint8_t)0x10)
+#define TIM1_CCER1_CC2E_MASK        ((uint8_t)0x10) /* Capture/Compare 2 output enable mask. */
+#define TIM1_CCER1_CC2E_DIABLE      ((uint8_t)0x00)
+#define TIM1_CCER1_CC2E_ENABLE      ((uint8_t)0x10)
 
-#define TIM1_CCER1_CC1NP_MASK   ((uint8_t)0x08) /* Capture/Compare 1 Complementary output Polarity mask. */
-#define TIM1_CCER1_CC1NP_DISABLE ((uint8_t)0x00)
-#define TIM1_CCER1_CC1NP_ENABLE ((uint8_t)0x08)
+#define TIM1_CCER1_CC1NP_MASK       ((uint8_t)0x08) /* Capture/Compare 1 Complementary output Polarity mask. */
+#define TIM1_CCER1_CC1NP_DISABLE    ((uint8_t)0x00)
+#define TIM1_CCER1_CC1NP_ENABLE     ((uint8_t)0x08)
 
-#define TIM1_CCER1_CC1NE_MASK   ((uint8_t)0x04) /* Capture/Compare 1 Complementary output enable mask. */
-#define TIM1_CCER1_CC1NE_DISABLE ((uint8_t)0x00)
-#define TIM1_CCER1_CC1NE_ENABLE ((uint8_t)0x04)
+#define TIM1_CCER1_CC1NE_MASK       ((uint8_t)0x04) /* Capture/Compare 1 Complementary output enable mask. */
+#define TIM1_CCER1_CC1NE_DISABLE    ((uint8_t)0x00)
+#define TIM1_CCER1_CC1NE_ENABLE     ((uint8_t)0x04)
 
 #define TIM1_CCER1_CC1P_MASK        ((uint8_t)0x02) /* Capture/Compare 1 output Polarity mask. */
 #define TIM1_CCER1_CC1P_HIGH        ((uint8_t)0x00) // When output on OC1
@@ -1051,9 +1071,9 @@ typedef struct
 #define TIM1_CCER1_CC1P_RISING      ((uint8_t)0x00) // When input with capture on T1F or T2F
 #define TIM1_CCER1_CC1P_FALLING     ((uint8_t)0x02)
 
-#define TIM1_CCER1_CC1E_MASK    ((uint8_t)0x01) /* Capture/Compare 1 output enable mask. */
-#define TIM1_CCER1_CC1E_DISABLE ((uint8_t)0x00)
-#define TIM1_CCER1_CC1E_ENABLE  ((uint8_t)0x01)
+#define TIM1_CCER1_CC1E_MASK        ((uint8_t)0x01) /* Capture/Compare 1 output enable mask. */
+#define TIM1_CCER1_CC1E_DISABLE     ((uint8_t)0x00)
+#define TIM1_CCER1_CC1E_ENABLE      ((uint8_t)0x01)
 
 #define TIM1_CCER2_CC4P_MASK        ((uint8_t)0x20) /* Capture/Compare 4 output Polarity mask. */
 #define TIM1_CCER2_CC4P_HIGH        ((uint8_t)0x00) // When output on OC4
@@ -1063,17 +1083,17 @@ typedef struct
 #define TIM1_CCER2_CC4P_RISING      ((uint8_t)0x00) // When input with capture on T1F or T2F
 #define TIM1_CCER2_CC4P_FALLING     ((uint8_t)0x20)
 
-#define TIM1_CCER2_CC4E_MASK    ((uint8_t)0x10) /* Capture/Compare 4 output enable mask. */
-#define TIM1_CCER2_CC4E_DISABLE ((uint8_t)0x00)
-#define TIM1_CCER2_CC4E_ENABLE  ((uint8_t)0x10)
+#define TIM1_CCER2_CC4E_MASK        ((uint8_t)0x10) /* Capture/Compare 4 output enable mask. */
+#define TIM1_CCER2_CC4E_DISABLE     ((uint8_t)0x00)
+#define TIM1_CCER2_CC4E_ENABLE      ((uint8_t)0x10)
 
-#define TIM1_CCER2_CC3NP_MASK   ((uint8_t)0x08) /* Capture/Compare 3 Complementary output Polarity mask. */
-#define TIM1_CCER2_CC3NP_DISABLE ((uint8_t)0x00)
-#define TIM1_CCER2_CC3NP_ENABLE ((uint8_t)0x08)
+#define TIM1_CCER2_CC3NP_MASK       ((uint8_t)0x08) /* Capture/Compare 3 Complementary output Polarity mask. */
+#define TIM1_CCER2_CC3NP_DISABLE    ((uint8_t)0x00)
+#define TIM1_CCER2_CC3NP_ENABLE     ((uint8_t)0x08)
 
-#define TIM1_CCER2_CC3NE_MASK   ((uint8_t)0x04) /* Capture/Compare 3 Complementary output enable mask. */
-#define TIM1_CCER2_CC3NE_DISABLE ((uint8_t)0x00)
-#define TIM1_CCER2_CC3NE_ENABLE ((uint8_t)0x04)
+#define TIM1_CCER2_CC3NE_MASK       ((uint8_t)0x04) /* Capture/Compare 3 Complementary output enable mask. */
+#define TIM1_CCER2_CC3NE_DISABLE    ((uint8_t)0x00)
+#define TIM1_CCER2_CC3NE_ENABLE     ((uint8_t)0x04)
 
 #define TIM1_CCER2_CC3P_MASK        ((uint8_t)0x02) /* Capture/Compare 3 output Polarity mask. */
 #define TIM1_CCER2_CC3P_HIGH        ((uint8_t)0x00) // When output on OC3
@@ -1083,92 +1103,92 @@ typedef struct
 #define TIM1_CCER2_CC3P_RISING      ((uint8_t)0x00) // When input with capture on T1F or T2F
 #define TIM1_CCER2_CC3P_FALLING     ((uint8_t)0x02)
 
-#define TIM1_CCER2_CC3E_MASK    ((uint8_t)0x01) /* Capture/Compare 3 output enable mask. */
-#define TIM1_CCER2_CC3E_DISABLE ((uint8_t)0x00)
-#define TIM1_CCER2_CC3E_ENABLE  ((uint8_t)0x01)
+#define TIM1_CCER2_CC3E_MASK        ((uint8_t)0x01) /* Capture/Compare 3 output enable mask. */
+#define TIM1_CCER2_CC3E_DISABLE     ((uint8_t)0x00)
+#define TIM1_CCER2_CC3E_ENABLE      ((uint8_t)0x01)
 
-#define TIM1_CNTRH_CNT_MASK     ((uint8_t)0xFF) /* Counter Value (MSB) mask. */
-#define TIM1_CNTRL_CNT_MASK     ((uint8_t)0xFF) /* Counter Value (LSB) mask. */
+#define TIM1_CNTRH_CNT_MASK         ((uint8_t)0xFF) /* Counter Value (MSB) mask. */
+#define TIM1_CNTRL_CNT_MASK         ((uint8_t)0xFF) /* Counter Value (LSB) mask. */
 
-#define TIM1_PSCRH_PSC_MASK     ((uint8_t)0xFF) /* Prescaler Value (MSB) mask. */
-#define TIM1_PSCRL_PSC_MASK     ((uint8_t)0xFF) /* Prescaler Value (LSB) mask. */
+#define TIM1_PSCRH_PSC_MASK         ((uint8_t)0xFF) /* Prescaler Value (MSB) mask. */
+#define TIM1_PSCRL_PSC_MASK         ((uint8_t)0xFF) /* Prescaler Value (LSB) mask. */
 
-#define TIM1_ARRH_ARR_MASK      ((uint8_t)0xFF) /* Autoreload Value (MSB) mask. */
-#define TIM1_ARRL_ARR_MASK      ((uint8_t)0xFF) /* Autoreload Value (LSB) mask. */
+#define TIM1_ARRH_ARR_MASK          ((uint8_t)0xFF) /* Autoreload Value (MSB) mask. */
+#define TIM1_ARRL_ARR_MASK          ((uint8_t)0xFF) /* Autoreload Value (LSB) mask. */
 
-#define TIM1_RCR_REP_MASK       ((uint8_t)0xFF) /* Repetition Counter Value mask. */
+#define TIM1_RCR_REP_MASK           ((uint8_t)0xFF) /* Repetition Counter Value mask. */
+    
+#define TIM1_CCR1H_CCR1_MASK        ((uint8_t)0xFF) /* Capture/Compare 1 Value (MSB) mask. */
+#define TIM1_CCR1L_CCR1_MASK        ((uint8_t)0xFF) /* Capture/Compare 1 Value (LSB) mask. */
 
-#define TIM1_CCR1H_CCR1_MASK    ((uint8_t)0xFF) /* Capture/Compare 1 Value (MSB) mask. */
-#define TIM1_CCR1L_CCR1_MASK    ((uint8_t)0xFF) /* Capture/Compare 1 Value (LSB) mask. */
+#define TIM1_CCR2H_CCR2_MASK        ((uint8_t)0xFF) /* Capture/Compare 2 Value (MSB) mask. */
+#define TIM1_CCR2L_CCR2_MASK        ((uint8_t)0xFF) /* Capture/Compare 2 Value (LSB) mask. */
 
-#define TIM1_CCR2H_CCR2_MASK    ((uint8_t)0xFF) /* Capture/Compare 2 Value (MSB) mask. */
-#define TIM1_CCR2L_CCR2_MASK    ((uint8_t)0xFF) /* Capture/Compare 2 Value (LSB) mask. */
+#define TIM1_CCR3H_CCR3_MASK        ((uint8_t)0xFF) /* Capture/Compare 3 Value (MSB) mask. */
+#define TIM1_CCR3L_CCR3_MASK        ((uint8_t)0xFF) /* Capture/Compare 3 Value (LSB) mask. */
 
-#define TIM1_CCR3H_CCR3_MASK    ((uint8_t)0xFF) /* Capture/Compare 3 Value (MSB) mask. */
-#define TIM1_CCR3L_CCR3_MASK    ((uint8_t)0xFF) /* Capture/Compare 3 Value (LSB) mask. */
+#define TIM1_CCR4H_CCR4_MASK        ((uint8_t)0xFF) /* Capture/Compare 4 Value (MSB) mask. */
+#define TIM1_CCR4L_CCR4_MASK        ((uint8_t)0xFF) /* Capture/Compare 4 Value (LSB) mask. */
 
-#define TIM1_CCR4H_CCR4_MASK    ((uint8_t)0xFF) /* Capture/Compare 4 Value (MSB) mask. */
-#define TIM1_CCR4L_CCR4_MASK    ((uint8_t)0xFF) /* Capture/Compare 4 Value (LSB) mask. */
+#define TIM1_BKR_MOE_MASK           ((uint8_t)0x80) /* Main Output Enable mask. */
+#define TIM1_BKR_MOE_DISABLE        ((uint8_t)0x00)
+#define TIM1_BKR_MOE_ENABLE         ((uint8_t)0x80)
 
-#define TIM1_BKR_MOE_MASK       ((uint8_t)0x80) /* Main Output Enable mask. */
-#define TIM1_BKR_MOE_DISABLE    ((uint8_t)0x00)
-#define TIM1_BKR_MOE_ENABLE     ((uint8_t)0x80)
+#define TIM1_BKR_AOE_MASK           ((uint8_t)0x40) /* Automatic Output Enable mask. */
+#define TIM1_BKR_AOE_DISABLE        ((uint8_t)0x00)
+#define TIM1_BKR_AOE_ENABLE         ((uint8_t)0x40)
 
-#define TIM1_BKR_AOE_MASK       ((uint8_t)0x40) /* Automatic Output Enable mask. */
-#define TIM1_BKR_AOE_DISABLE    ((uint8_t)0x00)
-#define TIM1_BKR_AOE_ENABLE     ((uint8_t)0x40)
+#define TIM1_BKR_BKP_MASK           ((uint8_t)0x20) /* Break Polarity mask. */
+#define TIM1_BKR_BKP_LOW            ((uint8_t)0x00)
+#define TIM1_BKR_BKP_HIGH           ((uint8_t)0x20)
 
-#define TIM1_BKR_BKP_MASK       ((uint8_t)0x20) /* Break Polarity mask. */
-#define TIM1_BKR_BKP_LOW        ((uint8_t)0x00)
-#define TIM1_BKR_BKP_HIGH       ((uint8_t)0x20)
+#define TIM1_BKR_BKE_MASK           ((uint8_t)0x10) /* Break Enable mask. */
+#define TIM1_BKR_BKE_DISABLE        ((uint8_t)0x00)
+#define TIM1_BKR_BKE_ENABLE         ((uint8_t)0x10)
 
-#define TIM1_BKR_BKE_MASK       ((uint8_t)0x10) /* Break Enable mask. */
-#define TIM1_BKR_BKE_DISABLE    ((uint8_t)0x00)
-#define TIM1_BKR_BKE_ENABLE     ((uint8_t)0x10)
+#define TIM1_BKR_OSSR_MASK          ((uint8_t)0x08) /* Off-State Selection for Run mode mask. */
+#define TIM1_BKR_OSSR_DISABLE       ((uint8_t)0x00)
+#define TIM1_BKR_OSSR_ENABLE        ((uint8_t)0x08)
 
-#define TIM1_BKR_OSSR_MASK      ((uint8_t)0x08) /* Off-State Selection for Run mode mask. */
-#define TIM1_BKR_OSSR_DISABLE   ((uint8_t)0x00)
-#define TIM1_BKR_OSSR_ENABLE    ((uint8_t)0x08)
+#define TIM1_BKR_OSSI_MASK          ((uint8_t)0x04) /* Off-State Selection for Idle mode mask. */
+#define TIM1_BKR_OSSI_DISABLE       ((uint8_t)0x00)
+#define TIM1_BKR_OSSI_ENABLE        ((uint8_t)0x04)
 
-#define TIM1_BKR_OSSI_MASK      ((uint8_t)0x04) /* Off-State Selection for Idle mode mask. */
-#define TIM1_BKR_OSSI_DISABLE   ((uint8_t)0x00)
-#define TIM1_BKR_OSSI_ENABLE    ((uint8_t)0x04)
+#define TIM1_BKR_LOCK_MASK          ((uint8_t)0x03) /* Lock Configuration mask. */
+#define TIM1_BKR_LOCK_OFF           ((uint8_t)0x00)
+#define TIM1_BKR_LOCK_LEVEL1        ((uint8_t)0x01)
+#define TIM1_BKR_LOCK_LEVEL2        ((uint8_t)0x02)
+#define TIM1_BKR_LOCK_LEVEL3        ((uint8_t)0x03)
 
-#define TIM1_BKR_LOCK_MASK      ((uint8_t)0x03) /* Lock Configuration mask. */
-#define TIM1_BKR_LOCK_OFF       ((uint8_t)0x00)
-#define TIM1_BKR_LOCK_LEVEL1    ((uint8_t)0x01)
-#define TIM1_BKR_LOCK_LEVEL2    ((uint8_t)0x02)
-#define TIM1_BKR_LOCK_LEVEL3    ((uint8_t)0x03)
+#define TIM1_DTR_DTG_MASK           ((uint8_t)0xFF) /* Dead-Time Generator set-up mask. */
 
-#define TIM1_DTR_DTG_MASK       ((uint8_t)0xFF) /* Dead-Time Generator set-up mask. */
+#define TIM1_OISR_OIS4_MASK         ((uint8_t)0x40) /* Output Idle state 4 (OC4 output) mask. */
+#define TIM1_OISR_OIS4_DISABLE      ((uint8_t)0x00)
+#define TIM1_OISR_OIS4_ENABLE       ((uint8_t)0x40)
 
-#define TIM1_OISR_OIS4_MASK     ((uint8_t)0x40) /* Output Idle state 4 (OC4 output) mask. */
-#define TIM1_OISR_OIS4_DISABLE  ((uint8_t)0x00)
-#define TIM1_OISR_OIS4_ENABLE   ((uint8_t)0x40)
+#define TIM1_OISR_OIS3N_MASK        ((uint8_t)0x20) /* Output Idle state 3 (OC3N output) mask. */
+#define TIM1_OISR_OIS3N_DISABLE     ((uint8_t)0x00)
+#define TIM1_OISR_OIS3N_ENABLE      ((uint8_t)0x20)
 
-#define TIM1_OISR_OIS3N_MASK    ((uint8_t)0x20) /* Output Idle state 3 (OC3N output) mask. */
-#define TIM1_OISR_OIS3N_DISABLE ((uint8_t)0x00)
-#define TIM1_OISR_OIS3N_ENABLE  ((uint8_t)0x20)
+#define TIM1_OISR_OIS3_MASK         ((uint8_t)0x10) /* Output Idle state 3 (OC3 output) mask. */
+#define TIM1_OISR_OIS3_DISABLE      ((uint8_t)0x00)
+#define TIM1_OISR_OIS3_ENABLE       ((uint8_t)0x10)
 
-#define TIM1_OISR_OIS3_MASK     ((uint8_t)0x10) /* Output Idle state 3 (OC3 output) mask. */
-#define TIM1_OISR_OIS3_DISABLE  ((uint8_t)0x00)
-#define TIM1_OISR_OIS3_ENABLE   ((uint8_t)0x10)
+#define TIM1_OISR_OIS2N_MASK        ((uint8_t)0x08) /* Output Idle state 2 (OC2N output) mask. */
+#define TIM1_OISR_OIS2N_DISABLE     ((uint8_t)0x00)
+#define TIM1_OISR_OIS2N_ENABLE      ((uint8_t)0x08)
 
-#define TIM1_OISR_OIS2N_MASK    ((uint8_t)0x08) /* Output Idle state 2 (OC2N output) mask. */
-#define TIM1_OISR_OIS2N_DISABLE ((uint8_t)0x00)
-#define TIM1_OISR_OIS2N_ENABLE  ((uint8_t)0x08)
+#define TIM1_OISR_OIS2_MASK         ((uint8_t)0x04) /* Output Idle state 2 (OC2 output) mask. */
+#define TIM1_OISR_OIS2_DISABLE      ((uint8_t)0x00)
+#define TIM1_OISR_OIS2_ENABLE       ((uint8_t)0x04)
 
-#define TIM1_OISR_OIS2_MASK     ((uint8_t)0x04) /* Output Idle state 2 (OC2 output) mask. */
-#define TIM1_OISR_OIS2_DISABLE  ((uint8_t)0x00)
-#define TIM1_OISR_OIS2_ENABLE   ((uint8_t)0x04)
+#define TIM1_OISR_OIS1N_MASK        ((uint8_t)0x02) /* Output Idle state 1 (OC1N output) mask. */
+#define TIM1_OISR_OIS1N_DISABLE     ((uint8_t)0x00)
+#define TIM1_OISR_OIS1N_ENABLE      ((uint8_t)0x02)
 
-#define TIM1_OISR_OIS1N_MASK    ((uint8_t)0x02) /* Output Idle state 1 (OC1N output) mask. */
-#define TIM1_OISR_OIS1N_DISABLE ((uint8_t)0x00)
-#define TIM1_OISR_OIS1N_ENABLE  ((uint8_t)0x02)
-
-#define TIM1_OISR_OIS1_MASK     ((uint8_t)0x01) /* Output Idle state 1 (OC1 output) mask. */
-#define TIM1_OISR_OIS1_DISABLE  ((uint8_t)0x00)
-#define TIM1_OISR_OIS1_ENABLE   ((uint8_t)0x01)
+#define TIM1_OISR_OIS1_MASK         ((uint8_t)0x01) /* Output Idle state 1 (OC1 output) mask. */
+#define TIM1_OISR_OIS1_DISABLE      ((uint8_t)0x00)
+#define TIM1_OISR_OIS1_ENABLE       ((uint8_t)0x01)
 
 //-----------------------------------------------------------------------------
 // Timer 4
@@ -1184,55 +1204,55 @@ typedef struct
     __IO uint8_t ARR;  /* auto-reload register */
 } stm8_tim4_t;
 
-#define TIM4_BaseAddress        0x5340
-#define TIM4                    ((stm8_tim4_t *)TIM4_BaseAddress)
+#define TIM4_BaseAddress            0x5340
+#define TIM4                        ((stm8_tim4_t *)TIM4_BaseAddress)
 
-#define TIM4_CR1_ARPE_MASK      ((uint8_t)0x80) /* Auto-Reload Preload Enable mask. */
-#define TIM4_CR1_ARPE_DISABLE   ((uint8_t)0x00)
-#define TIM4_CR1_ARPE_ENABLE    ((uint8_t)0x80)
+#define TIM4_CR1_ARPE_MASK          ((uint8_t)0x80) /* Auto-Reload Preload Enable mask. */
+#define TIM4_CR1_ARPE_DISABLE       ((uint8_t)0x00)
+#define TIM4_CR1_ARPE_ENABLE        ((uint8_t)0x80)
 
-#define TIM4_CR1_OPM_MASK       ((uint8_t)0x08) /* One Pulse Mode mask. */
-#define TIM4_CR1_OPM_DISABLE    ((uint8_t)0x00)
-#define TIM4_CR1_OPM_ENABLE     ((uint8_t)0x08)
+#define TIM4_CR1_OPM_MASK           ((uint8_t)0x08) /* One Pulse Mode mask. */
+#define TIM4_CR1_OPM_DISABLE        ((uint8_t)0x00)
+#define TIM4_CR1_OPM_ENABLE         ((uint8_t)0x08)
 
-#define TIM4_CR1_URS_MASK       ((uint8_t)0x04) /* Update Request Source mask. */
-#define TIM4_CR1_URS_DISABLE    ((uint8_t)0x00)
-#define TIM4_CR1_URS_ENABLE     ((uint8_t)0x04)
+#define TIM4_CR1_URS_MASK           ((uint8_t)0x04) /* Update Request Source mask. */
+#define TIM4_CR1_URS_DISABLE        ((uint8_t)0x00)
+#define TIM4_CR1_URS_ENABLE         ((uint8_t)0x04)
 
-#define TIM4_CR1_UDIS_MASK      ((uint8_t)0x02) /* Update Disable mask. */
-#define TIM4_CR1_UDIS_DISABLE   ((uint8_t)0x00)
-#define TIM4_CR1_UDIS_ENABLE    ((uint8_t)0x02)
+#define TIM4_CR1_UDIS_MASK          ((uint8_t)0x02) /* Update Disable mask. */
+#define TIM4_CR1_UDIS_DISABLE       ((uint8_t)0x00)
+#define TIM4_CR1_UDIS_ENABLE        ((uint8_t)0x02)
 
-#define TIM4_CR1_CEN_MASK       ((uint8_t)0x01) /* Counter Enable mask. */
-#define TIM4_CR1_CEN_DISABLE    ((uint8_t)0x00)
-#define TIM4_CR1_CEN_ENABLE     ((uint8_t)0x01)
+#define TIM4_CR1_CEN_MASK           ((uint8_t)0x01) /* Counter Enable mask. */
+#define TIM4_CR1_CEN_DISABLE        ((uint8_t)0x00)
+#define TIM4_CR1_CEN_ENABLE         ((uint8_t)0x01)
 
-#define TIM4_IER_UIE_MASK       ((uint8_t)0x01) /* Update Interrupt Enable mask. */
-#define TIM4_IER_UIE_DISABLE    ((uint8_t)0x00)
-#define TIM4_IER_UIE_ENABLE     ((uint8_t)0x01)
+#define TIM4_IER_UIE_MASK           ((uint8_t)0x01) /* Update Interrupt Enable mask. */
+#define TIM4_IER_UIE_DISABLE        ((uint8_t)0x00)
+#define TIM4_IER_UIE_ENABLE         ((uint8_t)0x01)
 
-#define TIM4_SR1_UIF_MASK       ((uint8_t)0x01) /* Update Interrupt Flag mask. */
-#define TIM4_SR1_UIF_CLEAR      ((uint8_t)0x00)
-#define TIM4_SR1_UIF_NONE       ((uint8_t)0x00)
-#define TIM4_SR1_UIF_PENDING    ((uint8_t)0x01)
+#define TIM4_SR1_UIF_MASK           ((uint8_t)0x01) /* Update Interrupt Flag mask. */
+#define TIM4_SR1_UIF_CLEAR          ((uint8_t)0x00)
+#define TIM4_SR1_UIF_NONE           ((uint8_t)0x00)
+#define TIM4_SR1_UIF_PENDING        ((uint8_t)0x01)
 
-#define TIM4_EGR_UG_MASK        ((uint8_t)0x01) /* Update Generation mask. */
-#define TIM4_EGR_UG_DISABLE     ((uint8_t)0x00)
-#define TIM4_EGR_UG_ENABLE      ((uint8_t)0x01)
+#define TIM4_EGR_UG_MASK            ((uint8_t)0x01) /* Update Generation mask. */
+#define TIM4_EGR_UG_DISABLE         ((uint8_t)0x00)
+#define TIM4_EGR_UG_ENABLE          ((uint8_t)0x01)
 
-#define TIM4_CNTR_CNT_MASK      ((uint8_t)0xFF) /* Counter Value (LSB) mask. */
+#define TIM4_CNTR_CNT_MASK          ((uint8_t)0xFF) /* Counter Value (LSB) mask. */
 
-#define TIM4_PSCR_PSC_MASK      ((uint8_t)0x07) /* Prescaler Value  mask. */
-#define TIM4_PSCR_DIV1          ((uint8_t)0x00)
-#define TIM4_PSCR_DIV2          ((uint8_t)0x01)
-#define TIM4_PSCR_DIV4          ((uint8_t)0x02)
-#define TIM4_PSCR_DIV8          ((uint8_t)0x03)
-#define TIM4_PSCR_DIV16         ((uint8_t)0x04)
-#define TIM4_PSCR_DIV32         ((uint8_t)0x05)
-#define TIM4_PSCR_DIV64         ((uint8_t)0x06)
-#define TIM4_PSCR_DIV128        ((uint8_t)0x07)
+#define TIM4_PSCR_PSC_MASK          ((uint8_t)0x07) /* Prescaler Value  mask. */
+#define TIM4_PSCR_DIV1              ((uint8_t)0x00)
+#define TIM4_PSCR_DIV2              ((uint8_t)0x01)
+#define TIM4_PSCR_DIV4              ((uint8_t)0x02)
+#define TIM4_PSCR_DIV8              ((uint8_t)0x03)
+#define TIM4_PSCR_DIV16             ((uint8_t)0x04)
+#define TIM4_PSCR_DIV32             ((uint8_t)0x05)
+#define TIM4_PSCR_DIV64             ((uint8_t)0x06)
+#define TIM4_PSCR_DIV128            ((uint8_t)0x07)
 
-#define TIM4_ARR_ARR_MASK       ((uint8_t)0xFF) /* Autoreload Value mask. */
+#define TIM4_ARR_ARR_MASK           ((uint8_t)0xFF) /* Autoreload Value mask. */
 
 //=============================================================================
 // Universal Asynchronous Receiver/Transmitter
@@ -1339,7 +1359,7 @@ typedef struct
             __IO uint8_t GTR;   // Guard time register
             __IO uint8_t PSCR;  // Prescaler register
         } uart4;
-    };
+    } uart;
 } stm8_uart_t;
 
 #define UART1_BaseAddress           0x5340
@@ -1664,9 +1684,6 @@ uint32_t SysClock_GetClockFreq(void)
 // all four uarts.
 //
 
-uint8_t tx_buffer[32];
-circular_buffer_t tx_cirbuf = { 0, 0, 31, tx_buffer };
-
 typedef enum
 {
     PARITY_NONE,
@@ -1687,6 +1704,18 @@ typedef enum
     WORDLENGTH_9
 } uart_wordlength_t;
 
+circular_buffer_t *tx2_cirbuf;
+circular_buffer_t *rx2_cirbuf;
+
+//-----------------------------------------------------------------------------
+// Set up the circular buffers for the UART functions to use
+//
+void Uart2_Init(circular_buffer_t *tx, circular_buffer_t *rx)
+{
+    tx2_cirbuf = tx;
+    rx2_cirbuf = rx;
+}
+
 //-----------------------------------------------------------------------------
 // Calculate the values for the BRR registers
 //
@@ -1697,7 +1726,7 @@ typedef enum
 //  BBR register    2  2  2  2  1  1  1  1  1  1  1  1  2  2  2  2
 //  BBR bit         7  6  5  4  7  6  5  4  3  2  1  0  3  2  1  0
 //
-void Uart_CalcBRR(uint32_t baud, uint8_t *brr1, uint8_t *brr2)
+void Uart_CalcBRR(uint32_t baud, volatile uint8_t *brr1, volatile uint8_t *brr2)
 {
     uint16_t d = SysClock_GetClockFreq() / baud;
     *brr2 = ((d >> 0) & UARTx_BRR2_DIV3_0_MASK) | ((d >> 8) & UARTx_BRR2_DIV15_12_MASK);
@@ -1763,17 +1792,17 @@ inline void Uart2_EnableRxInterrupts(void)
 // the circular buffer so long as it's not full. If it's full, then the function
 // returns immediately.
 //
-bool Uart2_SendByte(uint8_t byte) __critical
+bool Uart2_SendByte(uint8_t byte) CRITICAL
 {
     if ((UART2->CR2 & UARTx_CR2_TIEN_MASK) == UARTx_CR2_TIEN_ENABLE)
     {
         // Interrupts enabled, so buffer being used
-        if (CircBuf_IsFull(&tx_cirbuf))
+        if (CircBuf_IsFull(tx2_cirbuf))
         {
             // However, buffer is full so can't send
             return false;
         }
-        CircBuf_Put(&tx_cirbuf, byte);
+        CircBuf_Put(tx2_cirbuf, byte);
     }
     else
     {
@@ -1785,11 +1814,20 @@ bool Uart2_SendByte(uint8_t byte) __critical
         else
         {
             // No interrupts, but shift register still has something in it, use buffer
-            CircBuf_Put(&tx_cirbuf, byte);
+            CircBuf_Put(tx2_cirbuf, byte);
             Uart2_EnableTxInterrupts();
         }
     }
     return true;
+}
+
+bool Uart2_BufferIsFull(void)
+{
+    if (CircBuf_IsFull(tx2_cirbuf))
+    {
+        return true;
+    }
+    return false;
 }
 
 //-----------------------------------------------------------------------------
@@ -1816,13 +1854,16 @@ void Uart2_DirectSendByte(uint8_t byte)
 //-----------------------------------------------------------------------------
 // Interrupt handler for the transmission
 //
-void UART2_TX_IRQHandler(void) __interrupt(20)
+#if defined __IAR_SYSTEMS_ICC__
+#pragma vector=20
+#endif
+INTERRUPT(UART2_TX_IRQHandler, 20)
 {
     //if (!CircBuf_IsEmpty(&tx_cirbuf))
     {
-        UART2->DR = CircBuf_Get(&tx_cirbuf);  // Clears TXE flag
+        UART2->DR = CircBuf_Get(tx2_cirbuf);  // Clears TXE flag
     }
-    if (CircBuf_IsEmpty(&tx_cirbuf))
+    if (CircBuf_IsEmpty(tx2_cirbuf))
     {
         Uart2_DisableTxInterrupts();
     }
@@ -1831,62 +1872,113 @@ void UART2_TX_IRQHandler(void) __interrupt(20)
 //-----------------------------------------------------------------------------
 // Interrupt handler for the receiver
 //
-void UART2_RX_IRQHandler(void) __interrupt(21)
+#if defined __IAR_SYSTEMS_ICC__
+#pragma vector=21
+#endif
+INTERRUPT(UART2_RX_IRQHandler, 21)
 {
     (void)UART2->DR;      // Clears RXNE flag
 }
 
-//-----------------------------------------------------------------------------
+//=============================================================================
 // String functions using the serial port
 //
 
+void (*OutputByteFunc)(uint8_t ch) = Uart2_BlockingSendByte;
+
 //-----------------------------------------------------------------------------
-// Send a string
+// Set up the output character function
 //
-void Uart2_OutputString(const char *str)
+void OutputInit(void (*func)(uint8_t ch))
+{
+    OutputByteFunc = func;
+}
+
+//-----------------------------------------------------------------------------
+// Output a string
+//
+void OutputString(const char *str)
 {
     while (*str)
     {
-        Uart2_BlockingSendByte(*str);
+        OutputByteFunc(*str);
         ++str;
     }
 }
 
-void Uart2_OutputInt(uint32_t i)
+//-----------------------------------------------------------------------------
+// Output an unsigned integer in decimal
+//
+void OutputUInt32(uint32_t i)
 {
     uint32_t div = 1000000000;
     bool zero = true;
 
     while (div != 0)
     {
+        // Get a digit
         int ch = i / div;
         i = i - (ch * div);
         div = div / 10;
+
+        // Check for a non-zero digit to clear the leading zero flag
         if (ch != 0)
         {
             zero = false;
         }
+
+        // Only output a digit if non-zero, or zero and not a leading zero
         if (!zero)
         {
-            Uart2_BlockingSendByte(ch + '0');
+            OutputByteFunc(ch + '0');
         }
     }
+
+    // Zero will be true at this point if nothing has been output, so output "0"
     if (zero)
     {
-        Uart2_BlockingSendByte('0');
+        OutputByteFunc('0');
     }
 }
 
-void _uitoa(unsigned int value, char* string, unsigned char radix)
+//-----------------------------------------------------------------------------
+// Output an signed integer in decoimal
+//
+void OutputInt32(int32_t i)
 {
-    signed char index = 0, i = 0;
+    if (i < 0)
+    {
+        OutputByteFunc('-');
+        i = -i;
+    }
+    OutputUInt32(i);
+}
+
+//-----------------------------------------------------------------------------
+// Output a hex value
+//
+void OutputHex(uint32_t h, int width)
+{
+    while (width != 0)
+    {
+        uint8_t ch = (h >> ((width - 1) * 4)) & 0x0F;
+        OutputByteFunc("0123456789ABCDEF"[ch]);
+        --width;
+    }
+}
+
+//-----------------------------------------------------------------------------
+// Convert integer to string
+//
+void UintToString(uint32_t value, char* string, unsigned char radix)
+{
+    uint8_t index = 0;
+    uint8_t i = 0;
 
     // generate the number in reverse order
     do
     {
-        string[index] = '0' + (value % radix);
-        if (string[index] > '9')
-        string[index] += 'A' - '9' - 1;
+        string[index] = "0123456789ABCDEF"[value % radix];
         value /= radix;
         ++index;
     } while (value != 0);
@@ -1897,12 +1989,7 @@ void _uitoa(unsigned int value, char* string, unsigned char radix)
     // reverse the order of digits
     while (index > i)
     {
-        if (string[i] != string[index])
-        {
-            string[i] = string[i] ^ string[index];
-            string[index] = string[index] ^ string[i];
-            string[i] = string[i] ^ string[index];
-        }
+        swap_bytes(string[i], string[index]);
         ++i;
         --index;
     }
@@ -2017,7 +2104,7 @@ inline void Tim1_SetCapturePrescaler(tim1_ic_prescaler_t prescaler)
 //
 inline void Tim1_WaitCapture1(void)
 {
-    while ((TIM1->SR1 & TIM1_SR1_CC1IF_MATCH) != TIM1_SR1_CC1IF_CAPTURE)
+    while ((TIM1->SR1 & ~TIM1_SR1_CC1IF_MATCH) != TIM1_SR1_CC1IF_CAPTURE)
     {
     }
 }
@@ -2043,7 +2130,7 @@ inline void Tim1_ClearCapture1(void)
 //
 inline void Tim1_DisableCapture1(void)
 {
-    TIM1->CCER1 = (TIM1->CCER1 & TIM1_CCER1_CC1E_MASK) | TIM1_CCER1_CC1E_DISABLE;
+    TIM1->CCER1 = (TIM1->CCER1 & ~TIM1_CCER1_CC1E_MASK) | TIM1_CCER1_CC1E_DISABLE;
 }
 
 //-----------------------------------------------------------------------------
@@ -2051,7 +2138,7 @@ inline void Tim1_DisableCapture1(void)
 //
 inline void Tim1_EnableCapture1(void)
 {
-    TIM1->CCER1 = (TIM1->CCER1 & TIM1_CCER1_CC1E_MASK) | TIM1_CCER1_CC1E_ENABLE;
+    TIM1->CCER1 = (TIM1->CCER1 & ~TIM1_CCER1_CC1E_MASK) | TIM1_CCER1_CC1E_ENABLE;
 }
 
 //-----------------------------------------------------------------------------
@@ -2063,12 +2150,12 @@ inline void Tim1_SetPolarityCapture1(tim1_ic_polarity_t polarity)
     {
         case TIM1_ICPOL_RISING:
         {
-            TIM1->CCER1 = (TIM1->CCER1 & TIM1_CCER1_CC1P_MASK) | TIM1_CCER1_CC1P_RISING;
+            TIM1->CCER1 = (TIM1->CCER1 & ~TIM1_CCER1_CC1P_MASK) | TIM1_CCER1_CC1P_RISING;
             break;
         }
         case TIM1_ICPOL_FALLING:
         {
-            TIM1->CCER1 = (TIM1->CCER1 & TIM1_CCER1_CC1P_MASK) | TIM1_CCER1_CC1P_FALLING;
+            TIM1->CCER1 = (TIM1->CCER1 & ~TIM1_CCER1_CC1P_MASK) | TIM1_CCER1_CC1P_FALLING;
             break;
         }
     }
@@ -2090,7 +2177,7 @@ inline void Tim1_ConfigCapture1(tim1_ic_polarity_t polarity, tim1_ic_filter_t fi
     Tim1_DisableCapture1();
 
     /* Select the Input and set the filter */
-    TIM1->CCMR1 = (TIM1->CCMR1 & ~TIM1_CCMR_CCxS_MASK) | TIM1_CCMR_CCxS_IN_TI1FP1;
+    TIM1->CCMR1 = (TIM1->CCMR1 & ~TIM1_CCMR_CCxS_MASK) | TIM1_CCMR_CCxS_DIRECT;
     Tim1_SetFilterCapture1(filter);
     Tim1_SetPolarityCapture1(polarity);
 
@@ -2169,11 +2256,17 @@ void Tim1_ConfigPWM(void)
     Tim1_Enable();
 }
 
+//-----------------------------------------------------------------------------
+// Disable the TIM4 timer
+//
 inline void Tim4_Disable(void)
 {
     TIM4->CR1 = (TIM4->CR1 & ~TIM4_CR1_CEN_MASK) | TIM4_CR1_CEN_DISABLE;
 }
 
+//-----------------------------------------------------------------------------
+// Enable the TIM4 timer
+//
 inline void Tim4_Enable(void)
 {
     TIM4->CR1 = (TIM4->CR1 & ~TIM4_CR1_CEN_MASK) | TIM4_CR1_CEN_ENABLE;
@@ -2225,22 +2318,101 @@ void Tim4_Config1ms(void)
 
 typedef enum
 {
-    BEEP_1KHZ = 0x00,
-    BEEP_2KHZ = 0x40,
-    BEEP_4KHZ = 0x80
+    BEEP_8KHZ  = 0,      // 128Khz/(8*prescale) -> 500Hz to 8Khz
+    BEEP_16KHZ = 1,      // 128Khz/(4*prescale) -> 1Khz to 16Khz
+    BEEP_32KHZ = 2       // 128Khz/(2*prescale) -> 2Khz to 32Khz
 } beep_freq_t;
+
+typedef enum
+{
+    BEEP_PRESCALE_2    = 0x00,
+    BEEP_PRESCALE_3    = 0x01,
+    BEEP_PRESCALE_4    = 0x02,
+    BEEP_PRESCALE_5    = 0x03,
+    BEEP_PRESCALE_6    = 0x04,
+    BEEP_PRESCALE_7    = 0x05,
+    BEEP_PRESCALE_8    = 0x06,
+    BEEP_PRESCALE_9    = 0x07,
+    BEEP_PRESCALE_10   = 0x08,
+    BEEP_PRESCALE_11   = 0x09,
+    BEEP_PRESCALE_12   = 0x0A,
+    BEEP_PRESCALE_13   = 0x0B,
+    BEEP_PRESCALE_14   = 0x0C,
+    BEEP_PRESCALE_15   = 0x0D,
+    BEEP_PRESCALE_16   = 0x0E,
+    BEEP_PRESCALE_17   = 0x0F,
+    BEEP_PRESCALE_18   = 0x10,
+    BEEP_PRESCALE_19   = 0x11,
+    BEEP_PRESCALE_20   = 0x12,
+    BEEP_PRESCALE_21   = 0x13,
+    BEEP_PRESCALE_22   = 0x14,
+    BEEP_PRESCALE_23   = 0x15,
+    BEEP_PRESCALE_24   = 0x16,
+    BEEP_PRESCALE_25   = 0x17,
+    BEEP_PRESCALE_26   = 0x18,
+    BEEP_PRESCALE_27   = 0x19,
+    BEEP_PRESCALE_28   = 0x1A,
+    BEEP_PRESCALE_29   = 0x1B,
+    BEEP_PRESCALE_30   = 0x1C,
+    BEEP_PRESCALE_31   = 0x1D,
+    BEEP_PRESCALE_32   = 0x1E
+} beep_prescaler_t;
+
+//-----------------------------------------------------------------------------
+// Turn on beeper
+//
+inline void Beep_On(void)
+{
+    BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_EN_MASK) | BEEP_CSR_EN_ENABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Turn off beeper
+//
+inline void Beep_Off(void)
+{
+    BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_EN_MASK) | BEEP_CSR_EN_DISABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Toggle state of beeper
+//
+inline void Beep_Toggle(void)
+{
+    BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_EN_MASK) | (~BEEP->CSR & BEEP_CSR_EN_MASK);
+}
+
+//-----------------------------------------------------------------------------
+// Set prescaler for beep
+//
+inline void Beep_SetPrescaler(beep_prescaler_t prescaler)
+{
+    BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_DIV_MASK) | prescaler;
+}
 
 //-----------------------------------------------------------------------------
 // Set frequency of beep
 //
 void Beep_SetFrequency(beep_freq_t freq)
 {
-    if ((BEEP->CSR & BEEP_CSR_DIV_MASK) == BEEP_CSR_DIV_RESET)
+    switch (freq)
     {
-        // Set default prescaler value if not already set
-        BEEP->CSR = (BEEP->CSR & BEEP_CSR_DIV_MASK) | BEEP_CSR_DIV_13;
+        case BEEP_8KHZ:
+        {
+            BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_SEL_MASK) | BEEP_CSR_SEL_8KHZ;
+            break;
+        }
+        case BEEP_16KHZ:
+        {
+            BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_SEL_MASK) | BEEP_CSR_SEL_16KHZ;
+            break;
+        }
+        case BEEP_32KHZ:
+        {
+            BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_SEL_MASK) | BEEP_CSR_SEL_32KHZ;
+            break;
+        }
     }
-    BEEP->CSR = (BEEP->CSR & BEEP_CSR_SEL_MASK) | freq;
 }
 
 //-----------------------------------------------------------------------------
@@ -2274,30 +2446,6 @@ void Beep_Calibrate(uint32_t lsi_freq)
         div = (uint8_t)(div8 - 1U);
     }
     BEEP->CSR = (BEEP->CSR & BEEP_CSR_DIV_MASK) | div;
-}
-
-//-----------------------------------------------------------------------------
-// Turn on beeper
-//
-void Beep_On(void)
-{
-    BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_EN_MASK) | BEEP_CSR_EN_ENABLE;
-}
-
-//-----------------------------------------------------------------------------
-// Turn off beeper
-//
-void Beep_Off(void)
-{
-    BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_EN_MASK) | BEEP_CSR_EN_DISABLE;
-}
-
-//-----------------------------------------------------------------------------
-// Toggle state of beeper
-//
-void Beep_Toggle(void)
-{
-    BEEP->CSR = (BEEP->CSR & ~BEEP_CSR_EN_MASK) | (~BEEP->CSR & BEEP_CSR_EN_MASK);
 }
 
 //=============================================================================
@@ -2372,19 +2520,20 @@ void Awu_Enable(void)
 
 
 //-----------------------------------------------------------------------------
-/**
-  * @brief  Measure the LSI frequency using timer IC1 and update the calibration registers.
-  * @note   It is recommended to use a timer clock frequency of at least 10MHz in order
-    *         to obtain a better in the LSI frequency measurement.
-  * @param  None
-  * @retval None
-  */
+//  Measure the LSI frequency using timer IC1 and update the calibration registers.
+//
+//   It is recommended to use a timer clock frequency of at least 10MHz in order
+//   to obtain a better in the LSI frequency measurement.
+//
+// Two capture samples are taken from the timer and used to calculate the LSI's
+// frequency.
+//
 uint32_t AWU_MeasureLSI(void)
 {
-    uint32_t lsi_freq_hz = 0x0;
-    uint32_t fmaster = 0x0;
-    uint16_t ICValue1 = 0x0;
-    uint16_t ICValue2 = 0x0;
+    uint32_t lsi_freq_hz = 0;
+    uint32_t fmaster;
+    uint16_t ICValue1;
+    uint16_t ICValue2;
 
     // Get master frequency
     fmaster = SysClock_GetClockFreq();
@@ -2395,7 +2544,6 @@ uint32_t AWU_MeasureLSI(void)
     // Measure the LSI frequency with TIMER Input Capture 1
     // Capture only every 8 events!!!
     // Enable capture of TI1
-    Tim1_EnableCapture1();
     Tim1_ConfigCapture1(TIM1_ICPOL_RISING, TIM1_ICFILT_NONE);
     Tim1_SetPrescaler(TIM1_ICPSC_DIV8);
 
@@ -2403,25 +2551,26 @@ uint32_t AWU_MeasureLSI(void)
 
     Tim1_Enable();
 
+    // Capture first sample
     Tim1_WaitCapture1();
     ICValue1 = Tim1_GetCapture1Time();
     Tim1_ClearCapture1();
 
+    // Capture second sample
     Tim1_WaitCapture1();
     ICValue2 = Tim1_GetCapture1Time();
     Tim1_ClearCapture1();
 
     Tim1_DisableCapture1();
-
     Tim1_Disable();
 
-    /* Compute LSI clock frequency */
+    // Compute LSI clock frequency
     lsi_freq_hz = (8 * fmaster) / (ICValue2 - ICValue1);
 
-    /* Disable the LSI measurement: LSI clock disconnected from timer Input Capture 1 */
+    // Disable the LSI measurement: LSI clock disconnected from timer Input Capture 1
     AWU->CSR = (AWU->CSR & ~AWU_CSR_MSR_MASK) | AWU_CSR_MSR_DISABLE;
 
-    return (lsi_freq_hz);
+    return lsi_freq_hz;
 }
 
 //=============================================================================
@@ -2473,7 +2622,10 @@ void Systick_Wait(uint16_t period)
 //-----------------------------------------------------------------------------
 // Interrupt handler for the system tick counter
 //
-void TIM4_UPD_OVF_IRQHandler(void) __interrupt(23)
+#if defined __IAR_SYSTEMS_ICC__
+#pragma vector=23
+#endif
+INTERRUPT(TIM4_UPD_OVF_IRQHandler, 23)
 {
     ++systick;
 
@@ -2520,27 +2672,45 @@ void Gpio_TurnOffLED(void)
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 // Main super loop
 //
+
+uint8_t txbuffer[32];
+circular_buffer_t txbuf;
+
 void main(void)
 {
+#ifdef FADER
     uint16_t value = 0;
     uint16_t timer = 0;
     uint16_t fader = 0;
+#endif
+#ifdef FLASHER
     uint8_t flash = 0;
     uint8_t up = 0;
+#endif
+#ifdef SERIALIZER
     uint16_t transmitter = 0;
-    uint8_t serdata = 32;
+#endif
+#ifdef BEEPER
+    uint8_t pre = 0;
+    uint8_t freq = 0;
+    uint16_t beeper;
+#endif
+    uint32_t lsi_freq = 0;
 
     SysClock_HSI();
     Systick_Init();
+    //lsi_freq = AWU_MeasureLSI();
     Tim1_ConfigPWM();
     Gpio_Config();
+    CircBuf_Init(&txbuf, txbuffer, 32);
+    Uart2_Init(&txbuf, NULL);
     Uart2_Config9600_8N1();
+    OutputInit(&Uart2_BlockingSendByte);
 
-    enableInterrupts;
+    enableInterrupts();
 
-    //CircBuf_Init(&tx_cirbuf, tx_buffer, 32);
-
-    Beep_SetFrequency(BEEP_4KHZ);
+    Beep_SetPrescaler(BEEP_PRESCALE_2);
+    Beep_SetFrequency(BEEP_8KHZ);
     Beep_On();
 
     for (;;)
@@ -2591,18 +2761,41 @@ void main(void)
             }
         }
 #endif
+
+#ifdef BEEPER
+        if (Systick_Timeout(&beeper, 100))
+        {
+            Beep_SetPrescaler(pre);
+            if (++pre > BEEP_PRESCALE_32)
+            {
+                pre = BEEP_PRESCALE_2;
+                if (++freq > BEEP_32KHZ)
+                {
+                    freq = 0;
+                }
+                Beep_SetFrequency(freq);
+            }
+        }
+#endif
+
         // Output a message using interrupts and a circular buffer
 #ifdef SERIALIZER
-        //if (Systick_Timeout(&transmitter, 10))
+        if (Systick_Timeout(&transmitter, 1))
         {
             static uint32_t i = 0;
-            Uart2_OutputInt(i);
-            Uart2_OutputString(" \r");
+
+            OutputUInt32(pre);
+            OutputString(", ");
+            OutputUInt32(freq);
+            OutputString(" - ");
+            OutputHex(i, 8);
+            OutputString(" \r");
             ++i;
-            //Uart2_OutputString("The quick brown fox jumps over the lazy dog Pack my box with five dozen liquor jugs 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz\r\n");
+            //OutputString("The quick brown fox jumps over the lazy dog Pack my box with five dozen liquor jugs 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz\r\n");
         }
 
-        Tim1_SetCounter((TIM1_PERIOD * 100) /  CircBuf_PercentUsed(&tx_cirbuf));
+        // Indicate via the brightness of the LED, the amount of buffer space in use
+        //Tim1_SetCounter((TIM1_PERIOD * 100) /  CircBuf_PercentUsed(&tx_cirbuf));
 #endif
     }
 }
