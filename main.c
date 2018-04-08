@@ -42,7 +42,7 @@
 #define __PACKED                __attribute((packed))
 #define __IO                    volatile
 #define CRITICAL
-#define INTERRUPT(f, x)	        __interrupt void f(void)
+#define INTERRUPT(f, x)         __interrupt void f(void)
 #define disableInterrupts()     __asm("sim")
 #define enableInterrupts()      __asm("rim")
 #else
@@ -212,7 +212,7 @@ typedef struct
 #define CLK_ICKR_LSIEN_MASK         ((uint8_t)0x08) /* Low speed internal RC oscillator enable */
 #define CLK_ICKR_LSIEN_DISABLE      ((uint8_t)0x00)
 #define CLK_ICKR_LSIEN_ENABLE       ((uint8_t)0x08)
-    
+
 #define CLK_ICKR_FHWU_MASK          ((uint8_t)0x04) /* Fast Wake-up from Active Halt/Halt mode */
 #define CLK_ICKR_FHWU_DISABLE       ((uint8_t)0x00)
 #define CLK_ICKR_FHWU_ENABLE        ((uint8_t)0x04)
@@ -1117,7 +1117,7 @@ typedef struct
 #define TIM1_ARRL_ARR_MASK          ((uint8_t)0xFF) /* Autoreload Value (LSB) mask. */
 
 #define TIM1_RCR_REP_MASK           ((uint8_t)0xFF) /* Repetition Counter Value mask. */
-    
+
 #define TIM1_CCR1H_CCR1_MASK        ((uint8_t)0xFF) /* Capture/Compare 1 Value (MSB) mask. */
 #define TIM1_CCR1L_CCR1_MASK        ((uint8_t)0xFF) /* Capture/Compare 1 Value (LSB) mask. */
 
@@ -1253,6 +1253,208 @@ typedef struct
 #define TIM4_PSCR_DIV128            ((uint8_t)0x07)
 
 #define TIM4_ARR_ARR_MASK           ((uint8_t)0xFF) /* Autoreload Value mask. */
+
+//=============================================================================
+// Intra Integrated Circuit (I2C)
+//
+
+//-----------------------------------------------------------------------------
+// I2C 1
+//
+typedef struct
+{
+    __IO uint8_t CR1;       // Control register #1
+    __IO uint8_t CR2;       // Control register #2
+    __IO uint8_t FREQR;     // Frequency register
+    __IO uint8_t OARL;      // Own address register low
+    __IO uint8_t OARH;      // Own address register high
+    uint8_t RESERVED1;
+    __IO uint8_t DR;        // Data register
+    __IO uint8_t SR1;       // Status register #1
+    __IO uint8_t SR2;       // Status register #2
+    __IO uint8_t SR3;       // Status register #3
+    __IO uint8_t ITR;       // Interrupt register
+    __IO uint8_t CCRL;      // Clock control register low
+    __IO uint8_t CCRH;      // Clock control register high
+    __IO uint8_t TRISER;    // Rise time register
+} stm8_i2c_t;
+
+#define I2C_BaseAddress             0x0000
+#define I2C                         ((stm8_i2c_t *)I2C_BaseAddress)
+
+#define I2C_CR1_NOSTRETCH_MASK      ((uint8_t)0x80)     // Clock stretching disable
+#define I2C_CR1_NOSTRETCH_ENABLE    ((uint8_t)0x00)
+#define I2C_CR1_NOSTRETCH_DISABLE   ((uint8_t)0x80)
+
+#define I2C_CR1_ENGC_MASK           ((uint8_t)0x40)     // General call enable
+#define I2C_CR1_ENGC_DISABLE        ((uint8_t)0x00)
+#define I2C_CR1_ENGC_ENABLE         ((uint8_t)0x40)
+
+#define I2C_CR1_PE_MASK             ((uint8_t)0x01)     // Peripheral enable
+#define I2C_CR1_PE_DISABLE          ((uint8_t)0x00)
+#define I2C_CR1_PE_ENABLE           ((uint8_t)0x01)
+
+#define I2C_CR2_SWRST_MASK          ((uint8_t)0x80)     // Software reset
+#define I2C_CR2_SWRST_RUNNING       ((uint8_t)0x00)
+#define I2C_CR2_SWRST_RESET         ((uint8_t)0x80)
+
+#define I2C_CR2_POS_MASK            ((uint8_t)0x08)     // Acknowledge position
+#define I2C_CR2_POS_CURRENT         ((uint8_t)0x00)
+#define I2C_CR2_POS_NEXT            ((uint8_t)0x08)
+
+#define I2C_CR2_ACK_MASK            ((uint8_t)0x04)     // Acknowledge enable
+#define I2C_CR2_ACK_DISABLE         ((uint8_t)0x00)
+#define I2C_CR2_ACK_ENABLE          ((uint8_t)0x04)
+
+#define I2C_CR2_STOP_MASK           ((uint8_t)0x02)     // Stop generation
+#define I2C_CR2_STOP_DISABLE        ((uint8_t)0x00)
+#define I2C_CR2_STOP_ENABLE         ((uint8_t)0x02)
+
+#define I2C_CR2_START_MASK          ((uint8_t)0x01)     // Start generation
+#define I2C_CR2_START_DISABLE       ((uint8_t)0x00)
+#define I2C_CR2_START_ENABLE        ((uint8_t)0x01)
+
+#define I2C_FREQR_FREQ_MASK         ((uint8_t)0x3F)     // Peripheral clock frequency
+#define I2C_FREQR_FREQ_1MHZ         ((uint8_t)0x01)     // Min for standard mode
+#define I2C_FREQR_FREQ_2MHZ         ((uint8_t)0x02)
+#define I2C_FREQR_FREQ_3MHZ         ((uint8_t)0x03)
+#define I2C_FREQR_FREQ_4MHZ         ((uint8_t)0x04)     // Min for fast mode
+#define I2C_FREQR_FREQ_5MHZ         ((uint8_t)0x05)
+#define I2C_FREQR_FREQ_6MHZ         ((uint8_t)0x06)
+#define I2C_FREQR_FREQ_7MHZ         ((uint8_t)0x07)
+#define I2C_FREQR_FREQ_8MHZ         ((uint8_t)0x08)
+#define I2C_FREQR_FREQ_9MHZ         ((uint8_t)0x09)
+#define I2C_FREQR_FREQ_10MHZ        ((uint8_t)0x0A)
+#define I2C_FREQR_FREQ_11MHZ        ((uint8_t)0x0B)
+#define I2C_FREQR_FREQ_12MHZ        ((uint8_t)0x0C)
+#define I2C_FREQR_FREQ_13MHZ        ((uint8_t)0x0D)
+#define I2C_FREQR_FREQ_14MHZ        ((uint8_t)0x0E)
+#define I2C_FREQR_FREQ_15MHZ        ((uint8_t)0x0F)
+#define I2C_FREQR_FREQ_16MHZ        ((uint8_t)0x10)
+#define I2C_FREQR_FREQ_17MHZ        ((uint8_t)0x11)
+#define I2C_FREQR_FREQ_18MHZ        ((uint8_t)0x12)
+#define I2C_FREQR_FREQ_19MHZ        ((uint8_t)0x13)
+#define I2C_FREQR_FREQ_20MHZ        ((uint8_t)0x14)
+#define I2C_FREQR_FREQ_21MHZ        ((uint8_t)0x15)
+#define I2C_FREQR_FREQ_22MHZ        ((uint8_t)0x16)
+#define I2C_FREQR_FREQ_23MHZ        ((uint8_t)0x17)
+#define I2C_FREQR_FREQ_24MHZ        ((uint8_t)0x18)
+
+#define I2C_OARL_ADD_MASK           ((uint8_t)0xFF)     // Address 7:0 (bit 0 don't care in 7 bit mode)
+
+#define I2C_OARH_ADD_MASK           ((uint8_t)0x06)     // Address 9:8 (only for 10 bit mode)
+#define I2C_OARH_ADD_SHIFT          1
+
+#define I2C_OARH_ADDCONF_MASK       ((uint8_t)0x40)     // Address mode configuration
+#define I2C_OARH_ADDCONF            ((uint8_t)0x40)     // Must always be written as 1
+
+#define I2C_OARH_ADDMODE_MASK       ((uint8_t)0x80)     // Address mode (slave)
+#define I2C_OARH_ADDMODE_7BIT       ((uint8_t)0x00)
+#define I2C_OARH_ADDMODE_10BIT      ((uint8_t)0x80)
+
+#define I2C_DR_DR_MASK              ((uint8_t)0xFF)     // Data register
+
+#define I2C_SR1_TXE_MASK            ((uint8_t)0x80)     // Data register empty (transmitters)
+#define I2C_SR1_TXE_NOT_EMPTY       ((uint8_t)0x00)
+#define I2C_SR1_TXE_EMPTY           ((uint8_t)0x80)
+
+#define I2C_SR1_RXNE_MASK           ((uint8_t)0x40)     // Data register not empty (receivers)
+#define I2C_SR1_RXNE_EMPTY          ((uint8_t)0x00)
+#define I2C_SR1_RXNE_NOT_EMPTY      ((uint8_t)0x40)
+
+#define I2C_SR1_STOPF_MASK          ((uint8_t)0x10)     // Stop detection (slave)
+#define I2C_SR1_STOPF_NOT_DETECTED  ((uint8_t)0x00)
+#define I2C_SR1_STOPF_DETECTED      ((uint8_t)0x10)
+
+#define I2C_SR1_ADD10_MASK          ((uint8_t)0x08)     // 10-bit header sent
+#define I2C_SR1_ADD10_NOT_SENT      ((uint8_t)0x00)
+#define I2C_SR1_ADD10_SENT          ((uint8_t)0x08)
+
+#define I2C_SR1_BTF_MASK            ((uint8_t)0x04)     // Byte transfer finished
+#define I2C_SR1_BTF_NOT_DONE        ((uint8_t)0x00)
+#define I2C_SR1_BTF_DONE            ((uint8_t)0x04)
+
+#define I2C_SR1_ADDR_MASK           ((uint8_t)0x02)     // Address sent/matched
+#define I2C_SR1_ADDR_MISMATCH       ((uint8_t)0x00)     // Receiver
+#define I2C_SR1_ADDR_MATCH          ((uint8_t)0x02)
+#define I2C_SR1_ADDR_NOT_END_OF_TX  ((uint8_t)0x00)     // Transmitter
+#define I2C_SR1_ADDR_END_OF_TX      ((uint8_t)0x02)
+
+#define I2C_SR1_SB_MASK             ((uint8_t)0x01)     // Start bit
+#define I2C_SR1_SB_NOT_DONE         ((uint8_t)0x00)
+#define I2C_SR1_SB_DONE             ((uint8_t)0x01)
+
+#define I2C_SR2_WUFH_MASK           ((uint8_t)0x20)     // Wakeup from halt
+#define I2C_SR2_WUFH_CLEAR          ((uint8_t)0x00)
+#define I2C_SR2_WUFH_NOT_DONE       ((uint8_t)0x00)
+#define I2C_SR2_WUFH_DONE           ((uint8_t)0x20)
+
+#define I2C_SR2_OVR_MASK            ((uint8_t)0x08)     // Overrun/Underrun
+#define I2C_SR2_OVR_CLEAR           ((uint8_t)0x00)
+#define I2C_SR2_OVR_NOT_DONE        ((uint8_t)0x00)
+#define I2C_SR2_OVR_DONE            ((uint8_t)0x08)
+
+#define I2C_SR2_AF_MASK             ((uint8_t)0x04)     // Acknowledge failure
+#define I2C_SR2_AF_CLEAR            ((uint8_t)0x00)
+#define I2C_SR2_AF_NO_FAILURE       ((uint8_t)0x00)
+#define I2C_SR2_AF_FAILURE          ((uint8_t)0x04)
+
+#define I2C_SR2_ARLO_MASK           ((uint8_t)0x02)     // Arbitration lost
+#define I2C_SR2_ARLO_CLEAR          ((uint8_t)0x00)
+#define I2C_SR2_ARLO_NOT_DECTECTED  ((uint8_t)0x00)
+#define I2C_SR2_ARLO_DECTECTED      ((uint8_t)0x02)
+
+#define I2C_SR2_BERR_MASK           ((uint8_t)0x01)     // Bus error
+#define I2C_SR2_BERR_CLEAR          ((uint8_t)0x00)
+#define I2C_SR2_BERR_NOT_DECTECTED  ((uint8_t)0x00)
+#define I2C_SR2_BERR_DECTECTED      ((uint8_t)0x01)
+
+#define I2C_SR3_DUALF_MASK          ((uint8_t)0x80)     // Dual flag
+#define I2C_SR3_DUALF_MATCH_OAR1    ((uint8_t)0x00)
+#define I2C_SR3_DUALF_MATCH_OAR2    ((uint8_t)0x80)
+
+#define I2C_SR3_GENCALL_MASK        ((uint8_t)0x10)     // General call header
+#define I2C_SR3_GENCALL_NOT_RECEIVED ((uint8_t)0x00)
+#define I2C_SR3_GENCALL_RECEIVED    ((uint8_t)0x10)
+
+#define I2C_SR3_TRA_MASK            ((uint8_t)0x04)     // Transmitter/Receiver
+#define I2C_SR3_TRA_RECEIVED        ((uint8_t)0x00)
+#define I2C_SR3_TRA_TRANSMITTED     ((uint8_t)0x04)
+
+#define I2C_SR3_BUSY_MASK           ((uint8_t)0x02)     // Bus busy
+#define I2C_SR3_BUSY_NO_COMMS       ((uint8_t)0x00)
+#define I2C_SR3_BUSY_ONGOING        ((uint8_t)0x02)
+
+#define I2C_SR3_MSL_MASK            ((uint8_t)0x01)     // Master/Slave
+#define I2C_SR3_MSL_SLAVE           ((uint8_t)0x00)
+#define I2C_SR3_MSL_MASTER          ((uint8_t)0x01)
+
+#define I2C_ITR_BUFEN_MASK          ((uint8_t)0x04)     // Buffer interrupt enable
+#define I2C_ITR_BUFEN_DISABLE       ((uint8_t)0x00)
+#define I2C_ITR_BUFEN_ENABLE        ((uint8_t)0x04)
+
+#define I2C_ITR_EVTEN_MASK          ((uint8_t)0x02)     // Event interrupt enable
+#define I2C_ITR_EVTEN_DISABLE       ((uint8_t)0x00)
+#define I2C_ITR_EVTEN_ENABLE        ((uint8_t)0x02)
+
+#define I2C_ITR_ERREN_MASK          ((uint8_t)0x04)     // Error interrupt enable
+#define I2C_ITR_ERREN_DISABLE       ((uint8_t)0x00)
+#define I2C_ITR_ERREN_ENABLE        ((uint8_t)0x04)
+
+#define I2C_CCRL_CCR_MASK           ((uint8_t)0xFF)     // Clock register low
+
+#define I2C_CCRH_FS_MASK            ((uint8_t)0x80)     // I2C master mode selection
+#define I2C_CCRH_FS_STANDARD        ((uint8_t)0x00)
+#define I2C_CCRH_FS_FAST            ((uint8_t)0x80)
+
+#define I2C_CCRH_DUTY_MASK          ((uint8_t)0x40)     // Fast mode duty cycle
+#define I2C_CCRH_DUTY_2             ((uint8_t)0x00)
+#define I2C_CCRH_DUTY_169           ((uint8_t)0x40)
+
+#define I2C_CCRH_CCR_MASK           ((uint8_t)0x0F)     // Clock register high
+
+#define I2C_TRISE_MASK              ((uint8_t)0x3F)     // Maximum rise time
+
 
 //=============================================================================
 // Universal Asynchronous Receiver/Transmitter
@@ -1892,6 +2094,14 @@ void (*OutputByteFunc)(uint8_t ch) = Uart2_BlockingSendByte;
 void OutputInit(void (*func)(uint8_t ch))
 {
     OutputByteFunc = func;
+}
+
+//-----------------------------------------------------------------------------
+// Output a character
+//
+void OutputChar(char ch)
+{
+    OutputByteFunc(ch);
 }
 
 //-----------------------------------------------------------------------------
@@ -2574,6 +2784,590 @@ uint32_t AWU_MeasureLSI(void)
 }
 
 //=============================================================================
+// I2C functions
+//
+//
+
+// Use when clock is 10Mhz
+// MSbit is the duty cycle, rest is the CCR value
+/*typedef enum
+{
+    I2C_SPEED_400KHZ    = 0x8001,
+    I2C_SPEED_370KHZ    = 0x0009,
+    I2C_SPEED_350KHZ    = 0x0009,
+    I2C_SPEED_320KHZ    = 0x000A,
+    I2C_SPEED_300KHZ    = 0x000B,
+    I2C_SPEED_270KHZ    = 0x000C,
+    I2C_SPEED_250KHZ    = 0x000D,
+    I2C_SPEED_220KHZ    = 0x000F,
+    I2C_SPEED_200KHZ    = 0x8002,
+    I2C_SPEED_170KHZ    = 0x0013,
+    I2C_SPEED_150KHZ    = 0x0016,
+    I2C_SPEED_120KHZ    = 0x001B,
+    I2C_SPEED_100KHZ    = 0x0032,
+    I2C_SPEED_50KHZ     = 0x0064,
+    I2C_SPEED_30KHZ     = 0x00A6,
+    I2C_SPEED_20KHZ     = 0x00FA
+} i2c_speed_t;
+*/
+
+// Use when clock is 16Mhz
+// MSbit is the duty cycle, rest is the CCR value
+typedef enum
+{
+    I2C_SPEED_400KHZ    = 0x000D,
+    I2C_SPEED_370KHZ    = 0x000E,
+    I2C_SPEED_350KHZ    = 0x000F,
+    I2C_SPEED_320KHZ    = 0x8002,
+    I2C_SPEED_300KHZ    = 0x0011,
+    I2C_SPEED_270KHZ    = 0x0013,
+    I2C_SPEED_250KHZ    = 0x0015,
+    I2C_SPEED_220KHZ    = 0x0018,
+    I2C_SPEED_200KHZ    = 0x001A,
+    I2C_SPEED_170KHZ    = 0x001F,
+    I2C_SPEED_150KHZ    = 0x0023,
+    I2C_SPEED_120KHZ    = 0x002C,
+    I2C_SPEED_100KHZ    = 0x0050,
+    I2C_SPEED_50KHZ     = 0x00A0,
+    I2C_SPEED_30KHZ     = 0x010A,
+    I2C_SPEED_20KHZ     = 0x0190
+} i2c_speed_t;
+
+typedef enum
+{
+    I2C_DIRECTION_WRITE = 0,
+    I2C_DIRECTION_READ  = 1
+} i2c_direction_t;
+
+/**
+  * @brief  I2C Flags
+  * @brief Elements values convention: 0xXXYY
+  *  X = SRx registers index
+  *      X = 1 : SR1
+  *      X = 2 : SR2
+  *      X = 3 : SR3
+  *  Y = Flag mask in the register
+  */
+typedef enum
+{
+  /* SR1 register flags */
+  I2C_FLAG_TXEMPTY             = (uint16_t)0x0180,  /*!< Transmit Data Register Empty flag */
+  I2C_FLAG_RXNOTEMPTY          = (uint16_t)0x0140,  /*!< Read Data Register Not Empty flag */
+  I2C_FLAG_STOPDETECTION       = (uint16_t)0x0110,  /*!< Stop detected flag */
+  I2C_FLAG_HEADERSENT          = (uint16_t)0x0108,  /*!< 10-bit Header sent flag */
+  I2C_FLAG_TRANSFERFINISHED    = (uint16_t)0x0104,  /*!< Data Byte Transfer Finished flag */
+  I2C_FLAG_ADDRESSSENTMATCHED  = (uint16_t)0x0102,  /*!< Address Sent/Matched (master/slave) flag */
+  I2C_FLAG_STARTDETECTION      = (uint16_t)0x0101,  /*!< Start bit sent flag */
+
+  /* SR2 register flags */
+  I2C_FLAG_WAKEUPFROMHALT      = (uint16_t)0x0220,  /*!< Wake Up From Halt Flag */
+  I2C_FLAG_OVERRUNUNDERRUN     = (uint16_t)0x0208,  /*!< Overrun/Underrun flag */
+  I2C_FLAG_ACKNOWLEDGEFAILURE  = (uint16_t)0x0204,  /*!< Acknowledge Failure Flag */
+  I2C_FLAG_ARBITRATIONLOSS     = (uint16_t)0x0202,  /*!< Arbitration Loss Flag */
+  I2C_FLAG_BUSERROR            = (uint16_t)0x0201,  /*!< Misplaced Start or Stop condition */
+
+  /* SR3 register flags */
+  I2C_FLAG_GENERALCALL         = (uint16_t)0x0310,  /*!< General Call header received Flag */
+  I2C_FLAG_TRANSMITTERRECEIVER = (uint16_t)0x0304,  /*!< Transmitter Receiver Flag */
+  I2C_FLAG_BUSBUSY             = (uint16_t)0x0302,  /*!< Bus Busy Flag */
+  I2C_FLAG_MASTERSLAVE         = (uint16_t)0x0301   /*!< Master Slave Flag */
+} I2C_Flag_TypeDef;
+
+/**
+  * @brief I2C Pending bits
+  * Elements values convention: 0xXYZZ
+  *  X = SRx registers index
+  *      X = 1 : SR1
+  *      X = 2 : SR2
+  *  Y = Position of the corresponding Interrupt
+  *  ZZ = flag mask in the dedicated register(X register)
+  */
+
+typedef enum
+{
+    /* SR1 register flags */
+    I2C_ITPENDINGBIT_TXEMPTY             = (uint16_t)0x1680,    /*!< Transmit Data Register Empty  */
+    I2C_ITPENDINGBIT_RXNOTEMPTY          = (uint16_t)0x1640,    /*!< Read Data Register Not Empty  */
+    I2C_ITPENDINGBIT_STOPDETECTION       = (uint16_t)0x1210,    /*!< Stop detected  */
+    I2C_ITPENDINGBIT_HEADERSENT          = (uint16_t)0x1208,    /*!< 10-bit Header sent */
+    I2C_ITPENDINGBIT_TRANSFERFINISHED    = (uint16_t)0x1204,    /*!< Data Byte Transfer Finished  */
+    I2C_ITPENDINGBIT_ADDRESSSENTMATCHED  = (uint16_t)0x1202,    /*!< Address Sent/Matched (master/slave)  */
+    I2C_ITPENDINGBIT_STARTDETECTION      = (uint16_t)0x1201,    /*!< Start bit sent  */
+
+    /* SR2 register flags */
+    I2C_ITPENDINGBIT_WAKEUPFROMHALT      = (uint16_t)0x2220,    /*!< Wake Up From Halt  */
+    I2C_ITPENDINGBIT_OVERRUNUNDERRUN     = (uint16_t)0x2108,    /*!< Overrun/Underrun  */
+    I2C_ITPENDINGBIT_ACKNOWLEDGEFAILURE  = (uint16_t)0x2104,    /*!< Acknowledge Failure  */
+    I2C_ITPENDINGBIT_ARBITRATIONLOSS     = (uint16_t)0x2102,    /*!< Arbitration Loss  */
+    I2C_ITPENDINGBIT_BUSERROR            = (uint16_t)0x2101     /*!< Misplaced Start or Stop condition */
+} I2C_ITPendingBit_TypeDef;
+
+/**
+  * @brief I2C possible events
+  * Values convention: 0xXXYY
+  * XX = Event SR3 corresponding value
+  * YY = Event SR1 corresponding value
+  * @note if Event = EV3_2 the rule above does not apply
+  * YY = Event SR2 corresponding value
+  */
+
+typedef enum
+{
+  /*========================================
+                       I2C Master Events (Events grouped in order of communication)
+                                                          ==========================================*/
+  /**
+    * @brief  Communication start
+    *
+    * After sending the START condition (I2C_GenerateSTART() function) the master
+    * has to wait for this event. It means that the Start condition has been correctly
+    * released on the I2C bus (the bus is free, no other devices is communicating).
+    *
+    */
+  /* --EV5 */
+  I2C_EVENT_MASTER_MODE_SELECT               = (uint16_t)0x0301,  /*!< BUSY, MSL and SB flag */
+
+  /**
+    * @brief  Address Acknowledge
+    *
+    * After checking on EV5 (start condition correctly released on the bus), the
+    * master sends the address of the slave(s) with which it will communicate
+    * (I2C_Send7bitAddress() function, it also determines the direction of the communication:
+    * Master transmitter or Receiver).
+    * Then the master has to wait that a slave acknowledges his address.
+    * If an acknowledge is sent on the bus, one of the following events will
+    * be set:
+    *
+    *  1) In case of Master Receiver (7-bit addressing):
+    *  the I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED event is set.
+    *
+    *  2) In case of Master Transmitter (7-bit addressing):
+    *  the I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED is set
+    *
+    *  3) In case of 10-Bit addressing mode, the master (just after generating the START
+    *  and checking on EV5) has to send the header of 10-bit addressing mode (I2C_SendData()
+    *  function).
+    *  Then master should wait on EV9. It means that the 10-bit addressing
+    *  header has been correctly sent on the bus.
+    *  Then master should send the second part of the 10-bit address (LSB) using
+    *  the function I2C_Send7bitAddress(). Then master should wait for event EV6.
+    *
+    */
+  /* --EV6 */
+  I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED = (uint16_t)0x0782,  /*!< BUSY, MSL, ADDR, TXE and TRA flags */
+  I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED    = (uint16_t)0x0302,  /*!< BUSY, MSL and ADDR flags */
+  /* --EV9 */
+  I2C_EVENT_MASTER_MODE_ADDRESS10            = (uint16_t)0x0308,  /*!< BUSY, MSL and ADD10 flags */
+
+  /**
+    * @brief Communication events
+    *
+    * If a communication is established (START condition generated and slave address
+    * acknowledged) then the master has to check on one of the following events for
+    * communication procedures:
+    *
+    * 1) Master Receiver mode: The master has to wait on the event EV7 then to read
+    *    the data received from the slave (I2C_ReceiveData() function).
+    *
+    * 2) Master Transmitter mode: The master has to send data (I2C_SendData()
+    *    function) then to wait on event EV8 or EV8_2.
+    *    These two events are similar:
+    *     - EV8 means that the data has been written in the data register and is
+    *       being shifted out.
+    *     - EV8_2 means that the data has been physically shifted out and output
+    *       on the bus.
+    *     In most cases, using EV8 is sufficient for the application.
+    *     Using EV8_2 leads to a slower communication but ensures more reliable test.
+    *     EV8_2 is also more suitable than EV8 for testing on the last data transmission
+    *     (before Stop condition generation).
+    *
+    *  @note In case the user software does not guarantee that this event EV7 is
+    *  managed before the current byte end of transfer, then user may check on EV7
+    *  and BTF flag at the same time (ie. (I2C_EVENT_MASTER_BYTE_RECEIVED | I2C_FLAG_BTF)).
+    *  In this case the communication may be slower.
+    *
+    */
+  /* Master RECEIVER mode -----------------------------*/
+  /* --EV7 */
+  I2C_EVENT_MASTER_BYTE_RECEIVED             = (uint16_t)0x0340,  /*!< BUSY, MSL and RXNE flags */
+
+  /* Master TRANSMITTER mode --------------------------*/
+  /* --EV8 */
+  I2C_EVENT_MASTER_BYTE_TRANSMITTING         = (uint16_t)0x0780,  /*!< TRA, BUSY, MSL, TXE flags */
+  /* --EV8_2 */
+
+  I2C_EVENT_MASTER_BYTE_TRANSMITTED          = (uint16_t)0x0784,  /*!< EV8_2: TRA, BUSY, MSL, TXE and BTF flags */
+
+
+  /*========================================
+                       I2C Slave Events (Events grouped in order of communication)
+                                                          ==========================================*/
+
+  /**
+    * @brief  Communication start events
+    *
+    * Wait on one of these events at the start of the communication. It means that
+    * the I2C peripheral detected a Start condition on the bus (generated by master
+    * device) followed by the peripheral address.
+    * The peripheral generates an ACK condition on the bus (if the acknowledge
+    * feature is enabled through function I2C_AcknowledgeConfig()) and the events
+    * listed above are set :
+    *
+    * 1) In normal case (only one address managed by the slave), when the address
+    *   sent by the master matches the own address of the peripheral (configured by
+    *   I2C_OwnAddress1 field) the I2C_EVENT_SLAVE_XXX_ADDRESS_MATCHED event is set
+    *   (where XXX could be TRANSMITTER or RECEIVER).
+    *
+    * 2) In case the address sent by the master is General Call (address 0x00) and
+    *   if the General Call is enabled for the peripheral (using function I2C_GeneralCallCmd())
+    *   the following event is set I2C_EVENT_SLAVE_GENERALCALLADDRESS_MATCHED.
+    *
+    */
+
+  /* --EV1  (all the events below are variants of EV1) */
+  /* 1) Case of One Single Address managed by the slave */
+  I2C_EVENT_SLAVE_RECEIVER_ADDRESS_MATCHED    = (uint16_t)0x0202,  /*!< BUSY and ADDR flags */
+  I2C_EVENT_SLAVE_TRANSMITTER_ADDRESS_MATCHED = (uint16_t)0x0682,  /*!< TRA, BUSY, TXE and ADDR flags */
+
+  /* 2) Case of General Call enabled for the slave */
+  I2C_EVENT_SLAVE_GENERALCALLADDRESS_MATCHED  = (uint16_t)0x1200,  /*!< EV2: GENCALL and BUSY flags */
+
+  /**
+    * @brief  Communication events
+    *
+    * Wait on one of these events when EV1 has already been checked :
+    *
+    * - Slave RECEIVER mode:
+    *     - EV2: When the application is expecting a data byte to be received.
+    *     - EV4: When the application is expecting the end of the communication:
+    *       master sends a stop condition and data transmission is stopped.
+    *
+    * - Slave Transmitter mode:
+    *    - EV3: When a byte has been transmitted by the slave and the application
+    *      is expecting the end of the byte transmission.
+    *      The two events I2C_EVENT_SLAVE_BYTE_TRANSMITTED and I2C_EVENT_SLAVE_BYTE_TRANSMITTING
+    *      are similar. The second one can optionally be used when the user software
+    *      doesn't guarantee the EV3 is managed before the current byte end of transfer.
+    *    - EV3_2: When the master sends a NACK in order to tell slave that data transmission
+    *      shall end (before sending the STOP condition).
+    *      In this case slave has to stop sending data bytes and expect a Stop
+    *      condition on the bus.
+    *
+    *  @note In case the  user software does not guarantee that the event EV2 is
+    *  managed before the current byte end of transfer, then user may check on EV2
+    *  and BTF flag at the same time (ie. (I2C_EVENT_SLAVE_BYTE_RECEIVED | I2C_FLAG_BTF)).
+    *  In this case the communication may be slower.
+    *
+    */
+  /* Slave RECEIVER mode --------------------------*/
+  /* --EV2 */
+  I2C_EVENT_SLAVE_BYTE_RECEIVED              = (uint16_t)0x0240,  /*!< BUSY and RXNE flags */
+  /* --EV4  */
+  I2C_EVENT_SLAVE_STOP_DETECTED              = (uint16_t)0x0010,  /*!< STOPF flag */
+
+  /* Slave TRANSMITTER mode -----------------------*/
+  /* --EV3 */
+  I2C_EVENT_SLAVE_BYTE_TRANSMITTED           = (uint16_t)0x0684,  /*!< TRA, BUSY, TXE and BTF flags */
+  I2C_EVENT_SLAVE_BYTE_TRANSMITTING          = (uint16_t)0x0680,  /*!< TRA, BUSY and TXE flags */
+  /* --EV3_2 */
+  I2C_EVENT_SLAVE_ACK_FAILURE                = (uint16_t)0x0004  /*!< AF flag */
+} I2C_Event_TypeDef;
+
+// 1/((CCR/freq)) * [2|3|25]
+//
+// 1/((1/freq) * 25)
+// 1/((1/10000000) * 25)
+// 1/(0.0000001 * 25)
+// 1/0.0000025 => 400000
+//
+// 1/((9/freq) * 3)
+// 1/((9/10000000) * 3)
+// 1/(0.0000009 * 3)
+// 1/0.0000027 => 370370.37037037
+//
+// 1/((13/freq) * 3)
+// 1/((13/16000000) * 3)
+// 1/(0.000000812 * 3)
+// 1/0.000002438 => 410256.41025641
+// Error is 410256-400000 => 10256/400000 = 2.56%
+//
+// 1/((14/freq) * 3)
+// 1/((14/16000000) * 3)
+// 1/(0.000000875 * 3)
+// 1/0.000002625 => 380952.380952381
+// Error is 380952-370000  => 10952/370000 = 2.96%
+//
+// 1000000000 / ((CCR * 100) / Mhz) * (DUTY * 10)
+// 1000000000 / ((100/10) * 250) => 400000 => 400Khz
+// 1000000000 / ((100/10) * 30) => 5555555 => X
+// 1000000000 / ((900/10) * 30) => 370370 => 370Khz
+// 1000000000 / ((1400/16) * 30) => 380952 => 370Khz
+// 1000000000 / ((2000/16) * 25) => 320000 => 320Khz
+//
+void I2C_CalculateCCR(uint32_t freq, uint32_t req_speed, uint16_t *ccr, uint8_t *duty, uint32_t *actual)
+{
+    uint32_t prev_speed_0 = 0;
+    uint32_t prev_speed_1 = 0;
+    uint32_t calc_speed_0;
+    uint32_t calc_speed_1;
+    uint32_t diff_0;
+    uint32_t diff_1;
+    uint32_t i;
+
+    // OutputString("Freq=");
+    // OutputUInt32(freq);
+    // OutputString("\r\n");
+    if (req_speed > 100000)
+    {
+        for (i = 1; i < 4095; ++i)
+        {
+            calc_speed_0 = 1000000000UL / (((i * 1000UL) / freq) * 3UL);
+            calc_speed_1 = 1000000000UL / (((i * 1000UL) / freq) * 25UL);
+            // OutputUInt32(i);
+            // OutputChar(':');
+            // OutputUInt32(calc_speed_0);
+            // OutputChar(',');
+            // OutputUInt32(calc_speed_1);
+            // OutputString("\r\n");
+            if (calc_speed_0 == req_speed)
+            {
+                *duty = 0;
+                *ccr = i;
+                *actual = calc_speed_0;
+                return;
+            }
+            if (calc_speed_1 == req_speed)
+            {
+                *duty = 1;
+                *ccr = i;
+                *actual = calc_speed_1;
+                return;
+            }
+            if ((calc_speed_0 < req_speed) && (calc_speed_1 < req_speed))
+            {
+                diff_0 = req_speed - prev_speed_0;
+                diff_1 = req_speed - prev_speed_1;
+                if (diff_0 > diff_1)
+                {
+                    *duty = 0;
+                    *actual = prev_speed_0;
+                }
+                else
+                {
+                    *duty = 1;
+                    *actual = prev_speed_1;
+                }
+                *ccr = i - 1;
+                return;
+            }
+            prev_speed_0 = calc_speed_0;
+            prev_speed_1 = calc_speed_1;
+        }
+    }
+    else
+    {
+        for (i = 1; i < 4096; ++i)
+        {
+            calc_speed_0 = 1000000000UL / (((i * 1000UL) / freq) * 2UL);
+            // OutputUInt32(i);
+            // OutputChar(':');
+            // OutputUInt32(calc_speed_0);
+            // OutputString("\r\n");
+            if (calc_speed_0 == req_speed)
+            {
+                *duty = 0;
+                *ccr = i;
+                *actual = calc_speed_0;
+                return;
+            }
+            if (calc_speed_0 < req_speed)
+            {
+                *duty = 0;
+                *ccr = i - 1;
+                *actual = prev_speed_0;
+                return;
+            }
+            prev_speed_0 = calc_speed_0;
+        }
+    }
+    *ccr = 0;
+    *duty = 0;
+}
+
+//-----------------------------------------------------------------------------
+// Disable the I2C peripheral
+//
+void I2C_Disable(void)
+{
+    I2C->CR1 = (I2C->CR1 & I2C_CR1_PE_MASK) | I2C_CR1_PE_DISABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Enable the I2C peripheral
+//
+void I2C_Enable(void)
+{
+    I2C->CR1 = (I2C->CR1 & I2C_CR1_PE_MASK) | I2C_CR1_PE_ENABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Disable start condition
+//
+void I2C_DisbleStart(void)
+{
+    I2C->CR2 = (I2C->CR2 & I2C_CR2_START_MASK) | I2C_CR2_START_DISABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Enable start condition
+//
+void I2C_EnableStart(void)
+{
+    I2C->CR2 = (I2C->CR2 & I2C_CR2_START_MASK) | I2C_CR2_START_ENABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Disable stop condition
+//
+void I2C_DisableStop(void)
+{
+    I2C->CR2 = (I2C->CR2 & I2C_CR2_STOP_MASK) | I2C_CR2_STOP_DISABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Enable stop condition
+//
+void I2C_EnableStop(void)
+{
+    I2C->CR2 = (I2C->CR2 & I2C_CR2_STOP_MASK) | I2C_CR2_STOP_ENABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Perform a software reset of the peripheral
+//
+// This is used if the peripheral gets stuck in the busy state due to
+// a misbehaving slave device or problems on the line.
+//
+void I2C_SoftwareReset(void)
+{
+    I2C->CR2 = (I2C->CR2 & I2C_CR2_SWRST_MASK) | I2C_CR2_SWRST_RESET;
+    // TODO: Any delay required?
+    I2C->CR2 = (I2C->CR2 & I2C_CR2_SWRST_MASK) | I2C_CR2_SWRST_RUNNING;
+}
+
+//-----------------------------------------------------------------------------
+// Disable clock stretching
+//
+void I2C_DisableClockStretch(void)
+{
+    I2C->CR1 = (I2C->CR1 & I2C_CR1_NOSTRETCH_MASK) | I2C_CR1_NOSTRETCH_DISABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Enable clock stretching
+//
+void I2C_EnableClockStretch(void)
+{
+    I2C->CR1 = (I2C->CR1 & I2C_CR1_NOSTRETCH_MASK) | I2C_CR1_NOSTRETCH_ENABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Initialise the I2C peripheral
+//
+// Note that a system clock frequency multiple of 10Mhz is needed as this
+// satisfies the requirement for fast mode at 400Khz.
+//
+void I2C_Init(uint32_t speed)
+{
+    I2C->FREQR = SysClock_GetClockFreq() / 1000000;
+
+    I2C_Disable();
+
+    if (speed < 100000)
+    {
+        // Standard mode speeds
+        uint16_t counter = SysClock_GetClockFreq() / (speed * 2);
+        if (counter < 4)
+        {
+            counter = 4;
+        }
+        I2C->CCRL = (counter >> 0) & I2C_CCRL_CCR_MASK;
+        I2C->CCRH = (counter >> 8) & I2C_CCRH_CCR_MASK;
+        I2C->CCRH = (I2C->CCRH & I2C_CCRH_FS_MASK) | I2C_CCRH_FS_STANDARD;
+        I2C->CCRH = (I2C->CCRH & I2C_CCRH_DUTY_MASK) | I2C_CCRH_DUTY_2;
+        I2C->TRISER = I2C->FREQR + 1;
+    }
+    else
+    {
+        // Fast mode speeds
+        uint16_t counter = SysClock_GetClockFreq() / (speed * 25);
+        if (counter < 1)
+        {
+            counter = 1;
+        }
+        I2C->CCRL = (counter >> 0) & I2C_CCRL_CCR_MASK;
+        I2C->CCRH = (counter >> 8) & I2C_CCRH_CCR_MASK;
+        I2C->CCRH = (I2C->CCRH & I2C_CCRH_FS_MASK) | I2C_CCRH_FS_FAST;
+        I2C->CCRH = (I2C->CCRH & I2C_CCRH_DUTY_MASK) | I2C_CCRH_DUTY_169;
+        I2C->TRISER = ((I2C->FREQR * 3) / 10) + 1;;
+    }
+
+    I2C_Enable();
+}
+
+//-----------------------------------------------------------------------------
+// Configure for standard mode I2C comms master
+//
+// Assumes 7-bit addressing, default acknowledgement
+//
+void I2C_ConfigStdModeMaster(void)
+{
+}
+
+//-----------------------------------------------------------------------------
+// Read a byte from the data register
+//
+uint8_t I2C_ReceiveData(void)
+{
+    return I2C->DR;
+}
+
+//-----------------------------------------------------------------------------
+// Write a byte to the data register
+//
+void I2C_SendData(uint8_t data)
+{
+    I2C->DR = data;
+}
+
+//-----------------------------------------------------------------------------
+// Send address to slave device
+//
+// This is for 7-bit addressing which requires the read/write direction to be
+// included. 7-bit address is in the range 0-7F.
+//
+void I2C_SendAddress(uint8_t addr, i2c_direction_t dir)
+{
+    I2C->DR = (addr << 1) | dir;
+}
+
+//-----------------------------------------------------------------------------
+// Transmit a block of data to the slave device
+//
+void I2C_Transmit(uint8_t address, const uint8_t *data, uint8_t len)
+{
+
+}
+
+//-----------------------------------------------------------------------------
+// Receive a block of data to the slave device
+//
+uint8_t I2C_Receive(uint8_t address, const uint8_t *data, uint8_t len)
+{
+
+}
+
+//=============================================================================
 // System Tick functions
 //
 // The system tick is a 1ms timer. It uses the basic 8-bit timer TIM4. Counter
@@ -2673,6 +3467,24 @@ void Gpio_TurnOffLED(void)
 // Main super loop
 //
 
+void TestI2CSpeeds(uint32_t speed)
+{
+    uint16_t ccr;
+    uint8_t duty;
+    uint32_t actual;
+
+    I2C_CalculateCCR(16000000 / 1000000, speed, &ccr, &duty, &actual);
+    OutputString("Req=");
+    OutputUInt32(speed);
+    OutputString(", Actual=");
+    OutputUInt32(actual);
+    OutputString(", CCR=");
+    OutputUInt32(ccr);
+    OutputString(", Duty=");
+    OutputUInt32(duty);
+    OutputString("\r\n");
+}
+
 uint8_t txbuffer[32];
 circular_buffer_t txbuf;
 
@@ -2696,6 +3508,8 @@ void main(void)
     uint16_t beeper;
 #endif
     uint32_t lsi_freq = 0;
+    uint16_t ccr;
+    uint8_t duty;
 
     SysClock_HSI();
     Systick_Init();
@@ -2712,6 +3526,27 @@ void main(void)
     Beep_SetPrescaler(BEEP_PRESCALE_2);
     Beep_SetFrequency(BEEP_8KHZ);
     Beep_On();
+
+    TestI2CSpeeds(400000);
+    TestI2CSpeeds(370000);
+    TestI2CSpeeds(350000);
+    TestI2CSpeeds(320000);
+    TestI2CSpeeds(300000);
+    TestI2CSpeeds(270000);
+    TestI2CSpeeds(250000);
+    TestI2CSpeeds(220000);
+    TestI2CSpeeds(200000);
+    TestI2CSpeeds(170000);
+    TestI2CSpeeds(150000);
+    TestI2CSpeeds(120000);
+    TestI2CSpeeds(100000);
+    TestI2CSpeeds(50000);
+    TestI2CSpeeds(30000);
+    TestI2CSpeeds(20000);
+
+    for(;;)
+    {
+    }
 
     for (;;)
     {
