@@ -31,6 +31,10 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#pragma disable_warning 126     // Disable unreachable code due to optimisation
+
+#include <stdarg.h>     // For va_list macros in printf style output function
+
 #define FLASHER
 #define FADER
 #define SERIALIZER
@@ -56,7 +60,7 @@
 #endif
 
 // Some basic types
-#define NULL    0
+#define NULL    ((void *)0)
 typedef int bool;
 #define false   0
 #define true    (!false)
@@ -67,6 +71,7 @@ typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned long uint32_t;
 typedef unsigned int uint_t;
+typedef const char * ptr_t;
 
 // Useful macros
 // Swap two bytes using the XOR method (requires the two bytes to be different otherwise zero is the result)
@@ -2205,6 +2210,376 @@ void UintToString(uint32_t value, char* string, unsigned char radix)
     }
 }
 
+bool IsDigit(char c)
+{
+    return (c >= '0') && (c <= '9');
+}
+
+uint16_t StringLength(const char *str)
+{
+    register int i = 0;
+    while (*str++)
+    {
+        ++i;
+    }
+    return i;
+}
+
+uint16_t OutputText(const char *format, ... )
+{
+    va_list ap;
+    union
+    {
+        uint8_t b[5];
+        int32_t l;
+        uint32_t ul;
+        const char *p;
+    } value;
+    char c;
+    bool justify_left = false;
+    bool zero_padding = false;
+    bool prefix_sign = false;
+    bool prefix_space = false;
+    bool signed_argument = false;
+    bool long_argument = false;
+    bool char_argument = false;
+    uint16_t char_count = 0;
+    uint8_t radix = 0;
+    uint8_t width = 0;
+    int8_t decimals = -1;
+    uint8_t length = 0;
+
+    va_start(ap, format);
+    while (c = *format++)
+    {
+        if (c != '%')
+        {
+output_char:
+            OutputChar(c);
+            ++char_count;
+            continue;
+        }
+
+        // Reset all flags, counters, etc for a new format specification
+        justify_left = false;
+        zero_padding = false;
+        prefix_sign = false;
+        prefix_space = false;
+        signed_argument = false;
+        long_argument = false;
+        char_argument = false;
+        radix = 0;
+        width = 0;
+        decimals = -1;
+
+        // Process format specification
+next_format_char:
+        c = *format++;
+        if (c == '%')
+        {
+            // Double percent is output as a single %
+            goto output_char;
+        }
+
+        // Handle width and precision numbers
+        if (IsDigit(c))
+        {
+            if (decimals == -1)
+            {
+                width = (10 * width) + (c - '0');
+                if (width == 0)
+                {
+                    zero_padding = true;
+                }
+            }
+            else
+            {
+                decimals = (10 * decimals) + (c - '0');
+            }
+            goto next_format_char;
+        }
+
+        if (c == '.')
+        {
+            decimals = 0;
+            goto next_format_char;
+        }
+
+        switch(c)
+        {
+            case '-':
+            {
+                justify_left = true;
+                goto next_format_char;
+            }
+            case '+':
+            {
+                prefix_sign = true;
+                goto next_format_char;
+            }
+            case ' ':
+            {
+                prefix_space = true;
+                goto next_format_char;
+            }
+            case 'l':
+            {
+                long_argument = true;
+                goto next_format_char;
+            }
+            case 'd':
+            case 'i':
+            {
+                signed_argument = true;
+                radix = 10;
+                break;
+            }
+            case 'p':
+            case 'u':
+            {
+                radix = 10;
+                break;
+            }
+            case 'x':
+            {
+                radix = 16;
+                break;
+            }
+            case 'b':
+            {
+                char_argument = true;
+                goto next_format_char;
+            }
+            case 'c':
+            {
+                if (char_argument)
+                {
+                    c = va_arg(ap, char);
+                }
+                else
+                {
+                    c = va_arg(ap, int);
+                }
+                OutputChar(c);
+                ++char_count;
+                break;
+            }
+            case 's':
+            {
+                value.p = va_arg(ap, ptr_t);
+                length = StringLength(value.p);
+                if (decimals == -1)
+                {
+                    decimals = length;
+                }
+
+                // Right justification
+                if ((!justify_left) && (length < width))
+                {
+                    width -= length;
+                    while (width != 0)
+                    {
+                        OutputChar(' ');
+                        ++char_count;
+                        --width;
+                    }
+                }
+
+                // String itself
+                while ((c = *value.p) && (decimals-- > 0))
+                {
+                    OutputChar(c);
+                    ++char_count;
+                    ++value.p;
+                }
+
+                // Left justification
+                if (justify_left && (length < width))
+                {
+                    width -= length;
+                    while (width != 0)
+                    {
+                        OutputChar(' ');
+                        ++char_count;
+                        --width;
+                    }
+                }
+                break;
+            }
+            default:
+            {
+                goto output_char;
+            }
+        }
+
+        if (radix != 0)
+        {
+            uint8_t store[6];
+            uint8_t *pstore = &store[5];
+            bool lsd = true;
+
+            // l, p, u, i, d, or b have been used
+            if (char_argument)
+            {
+                value.l = va_arg(ap, char);
+                if (!signed_argument)
+                {
+                    value.l &= 0xFF;
+                }
+            }
+            else if (long_argument)
+            {
+                value.l = va_arg(ap, long);
+            }
+            else
+            {
+                value.l = va_arg(ap, int);
+                if (!signed_argument)
+                {
+                    value.l &= 0xFFFF;
+                }
+            }
+
+            if (signed_argument)
+            {
+                if (value.l < 0)
+                {
+                    value.l = -value.l;
+                }
+                else
+                {
+                    signed_argument = false;
+                }
+            }
+
+            length = 0;
+            do
+            {
+                uint8_t *pb4 = &value.b[4];
+                int i = 32;
+                value.b[4] = 0;
+
+                do
+                {
+                    *pb4 = (*pb4 << 1) | ((value.ul >> 31) & 0x01);
+                    value.ul <<= 1;
+                    if (radix <= *pb4)
+                    {
+                        *pb4 -= radix;
+                        value.ul |= 1;
+                    }
+                } while (--i);
+
+                if (!lsd)
+                {
+                    *pstore = (value.b[4] << 4) | (value.b[4] >> 4) | *pstore;
+                    --pstore;
+                }
+                else
+                {
+                    *pstore = value.b[4];
+                }
+                ++length;
+                lsd = !lsd;
+            } while (value.ul != 0);
+
+            if (width == 0)
+            {
+                width = 1;
+            }
+
+            if (!zero_padding && !justify_left)
+            {
+                while (width > (length + 1))
+                {
+                    OutputChar(' ');
+                    ++char_count;
+                    --width;
+                }
+            }
+
+            if (signed_argument)
+            {
+                OutputChar('-');
+                ++char_count;
+                --width;
+            }
+            else if (length != 0)
+            {
+                if (prefix_sign)
+                {
+                    OutputChar('+');
+                    ++char_count;
+                    --width;
+                }
+                else if (prefix_space)
+                {
+                    OutputChar(' ');
+                    ++char_count;
+                    --width;
+                }
+            }
+
+            if (!justify_left)
+            {
+                while (width > length)
+                {
+                    OutputChar(zero_padding ? '0' : ' ');
+                    ++char_count;
+                    --width;
+                }
+            }
+            else
+            {
+                if (width > length)
+                {
+                    width -= length;
+                }
+                else
+                {
+                    width = 0;
+                }
+            }
+
+            while (length)
+            {
+                uint8_t d;
+
+                lsd = !lsd;
+                if (!lsd)
+                {
+                    ++pstore;
+                    value.b[4] = *pstore >>4;
+                }
+                else
+                {
+                    value.b[4] = *pstore & 0x0F;
+                }
+
+                d = value.b[4] + '0';
+                if (d > '9')
+                {
+                    d += ('A' - '0' - 10);
+                }
+                OutputChar(d);
+                ++char_count;
+                --length;
+            }
+
+            if (justify_left)
+            {
+                while (width > 0)
+                {
+                    OutputChar(' ');
+                    ++char_count;
+                    --width;
+                }
+            }
+        }
+    }
+    return char_count;
+}
+
 //=============================================================================
 // Timer functions
 //
@@ -3073,38 +3448,51 @@ typedef enum
   I2C_EVENT_SLAVE_ACK_FAILURE                = (uint16_t)0x0004  /*!< AF flag */
 } I2C_Event_TypeDef;
 
+//=============================================================================
+// Calculate CCR values
+//
+// This function will calculate the CCR and DUTY values for a given peripheral
+// clock frequency and requested I2C data rate.
+//
+// Calculation to deduce CCR from a requested frequency is:
 // 1/((CCR/freq)) * [2|3|25]
 //
-// 1/((1/freq) * 25)
-// 1/((1/10000000) * 25)
+// Examples:
+// 1/((1/10Mhz) * 25)
 // 1/(0.0000001 * 25)
 // 1/0.0000025 => 400000
 //
-// 1/((9/freq) * 3)
-// 1/((9/10000000) * 3)
+// 1/((9/10Mhz) * 3)
 // 1/(0.0000009 * 3)
-// 1/0.0000027 => 370370.37037037
+// 1/0.0000027 => 370370.3703
 //
-// 1/((13/freq) * 3)
-// 1/((13/16000000) * 3)
+// 1/((13/16Mhz) * 3)
 // 1/(0.000000812 * 3)
-// 1/0.000002438 => 410256.41025641
+// 1/0.000002438 => 410256.4102
 // Error is 410256-400000 => 10256/400000 = 2.56%
 //
 // 1/((14/freq) * 3)
 // 1/((14/16000000) * 3)
 // 1/(0.000000875 * 3)
-// 1/0.000002625 => 380952.380952381
+// 1/0.000002625 => 380952.3809
 // Error is 380952-370000  => 10952/370000 = 2.96%
 //
-// 1000000000 / ((CCR * 100) / Mhz) * (DUTY * 10)
-// 1000000000 / ((100/10) * 250) => 400000 => 400Khz
-// 1000000000 / ((100/10) * 30) => 5555555 => X
-// 1000000000 / ((900/10) * 30) => 370370 => 370Khz
-// 1000000000 / ((1400/16) * 30) => 380952 => 370Khz
-// 1000000000 / ((2000/16) * 25) => 320000 => 320Khz
+// Using integers only:
+// 1000000000 / (((CCR * 1000) / Mhz) * DUTY)
 //
-void I2C_CalculateCCR(uint32_t freq, uint32_t req_speed, uint16_t *ccr, uint8_t *duty, uint32_t *actual)
+// Example calculations:
+// 1000000000 / ((1000/10) * 25) => 400000 => 400Khz
+// 1000000000 / ((9000/10) * 30) => 370370 => 370Khz
+// 1000000000 / ((14000/16) * 30) => 380952 => 370Khz
+// 1000000000 / ((20000/16) * 25) => 320000 => 320Khz
+// 1000000000 / ((250000/10) * 2) => 20000 => 20Khz
+//
+static uint32_t CalcSpeed(uint32_t ccr, uint8_t freq, uint8_t duty)
+{
+    return 1000000000UL / (((ccr * 1000UL) / freq) * (uint32_t)(duty));
+}
+
+void I2C_CalculateCCR(uint8_t freq, uint32_t req_speed, uint16_t *ccr, uint8_t *duty, uint32_t *actual)
 {
     uint32_t prev_speed_0 = 0;
     uint32_t prev_speed_1 = 0;
@@ -3114,21 +3502,13 @@ void I2C_CalculateCCR(uint32_t freq, uint32_t req_speed, uint16_t *ccr, uint8_t 
     uint32_t diff_1;
     uint32_t i;
 
-    // OutputString("Freq=");
-    // OutputUInt32(freq);
-    // OutputString("\r\n");
     if (req_speed > 100000)
     {
-        for (i = 1; i < 4095; ++i)
+        // Fast mode speeds, duty used in this mode so two calculations need to be carried out
+        for (i = 1; i < 4096; ++i)
         {
-            calc_speed_0 = 1000000000UL / (((i * 1000UL) / freq) * 3UL);
-            calc_speed_1 = 1000000000UL / (((i * 1000UL) / freq) * 25UL);
-            // OutputUInt32(i);
-            // OutputChar(':');
-            // OutputUInt32(calc_speed_0);
-            // OutputChar(',');
-            // OutputUInt32(calc_speed_1);
-            // OutputString("\r\n");
+            calc_speed_0 = CalcSpeed(i, freq, 3);
+            calc_speed_1 = CalcSpeed(i, freq, 25);
             if (calc_speed_0 == req_speed)
             {
                 *duty = 0;
@@ -3143,7 +3523,7 @@ void I2C_CalculateCCR(uint32_t freq, uint32_t req_speed, uint16_t *ccr, uint8_t 
                 *actual = calc_speed_1;
                 return;
             }
-            if ((calc_speed_0 < req_speed) && (calc_speed_1 < req_speed))
+            if ((calc_speed_0 < req_speed) && (calc_speed_1 < req_speed))            
             {
                 diff_0 = req_speed - prev_speed_0;
                 diff_1 = req_speed - prev_speed_1;
@@ -3166,13 +3546,10 @@ void I2C_CalculateCCR(uint32_t freq, uint32_t req_speed, uint16_t *ccr, uint8_t 
     }
     else
     {
+        // Standard mode speeds, duty is ignored in this mode
         for (i = 1; i < 4096; ++i)
         {
-            calc_speed_0 = 1000000000UL / (((i * 1000UL) / freq) * 2UL);
-            // OutputUInt32(i);
-            // OutputChar(':');
-            // OutputUInt32(calc_speed_0);
-            // OutputString("\r\n");
+            calc_speed_0 = CalcSpeed(i, freq, 2);
             if (calc_speed_0 == req_speed)
             {
                 *duty = 0;
@@ -3467,22 +3844,38 @@ void Gpio_TurnOffLED(void)
 // Main super loop
 //
 
-void TestI2CSpeeds(uint32_t speed)
+void TestI2CSpeeds(uint8_t clock)
 {
+    static const uint32_t speed[] = 
+    {
+        400000,
+        370000,
+        350000,
+        320000,
+        300000,
+        270000,
+        250000,
+        220000,
+        200000,
+        170000,
+        150000,
+        120000,
+        100000,
+        50000,
+        30000,
+        20000
+    };
+    int i;
     uint16_t ccr;
     uint8_t duty;
     uint32_t actual;
 
-    I2C_CalculateCCR(16000000 / 1000000, speed, &ccr, &duty, &actual);
-    OutputString("Req=");
-    OutputUInt32(speed);
-    OutputString(", Actual=");
-    OutputUInt32(actual);
-    OutputString(", CCR=");
-    OutputUInt32(ccr);
-    OutputString(", Duty=");
-    OutputUInt32(duty);
-    OutputString("\r\n");
+    OutputText("Clock=%i\r\n", clock);
+    for (i = 0; i < sizeof(speed) / sizeof(uint32_t); ++i)
+    {
+        I2C_CalculateCCR(clock, speed[i], &ccr, &duty, &actual);
+        OutputText("Req=%6lu, Actual=%6lu, CCR=%4i, Duty=%1i\r\n", speed[i], actual, ccr, duty);
+    }
 }
 
 uint8_t txbuffer[32];
@@ -3503,8 +3896,8 @@ void main(void)
     uint16_t transmitter = 0;
 #endif
 #ifdef BEEPER
-    uint8_t pre = 0;
-    uint8_t freq = 0;
+    beep_prescaler_t pre = BEEP_PRESCALE_2;
+    beep_freq_t freq = BEEP_8KHZ;
     uint16_t beeper;
 #endif
     uint32_t lsi_freq = 0;
@@ -3527,26 +3920,11 @@ void main(void)
     Beep_SetFrequency(BEEP_8KHZ);
     Beep_On();
 
-    TestI2CSpeeds(400000);
-    TestI2CSpeeds(370000);
-    TestI2CSpeeds(350000);
-    TestI2CSpeeds(320000);
-    TestI2CSpeeds(300000);
-    TestI2CSpeeds(270000);
-    TestI2CSpeeds(250000);
-    TestI2CSpeeds(220000);
-    TestI2CSpeeds(200000);
-    TestI2CSpeeds(170000);
-    TestI2CSpeeds(150000);
-    TestI2CSpeeds(120000);
-    TestI2CSpeeds(100000);
-    TestI2CSpeeds(50000);
-    TestI2CSpeeds(30000);
-    TestI2CSpeeds(20000);
-
-    for(;;)
-    {
-    }
+    TestI2CSpeeds(20);
+    TestI2CSpeeds(16);
+    TestI2CSpeeds(10);
+    TestI2CSpeeds(8);
+    TestI2CSpeeds(1);
 
     for (;;)
     {
@@ -3606,7 +3984,7 @@ void main(void)
                 pre = BEEP_PRESCALE_2;
                 if (++freq > BEEP_32KHZ)
                 {
-                    freq = 0;
+                    freq = BEEP_8KHZ;
                 }
                 Beep_SetFrequency(freq);
             }
@@ -3619,12 +3997,7 @@ void main(void)
         {
             static uint32_t i = 0;
 
-            OutputUInt32(pre);
-            OutputString(", ");
-            OutputUInt32(freq);
-            OutputString(" - ");
-            OutputHex(i, 8);
-            OutputString(" \r");
+            OutputText("%08lx\r", i);
             ++i;
             //OutputString("The quick brown fox jumps over the lazy dog Pack my box with five dozen liquor jugs 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz\r\n");
         }
