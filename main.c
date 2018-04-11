@@ -9,6 +9,9 @@
  * It's simple in that it doesn't have any reliance on the Standard Peripheral Library
  * or anything complicated and buggy like that.
  *
+ * The command to compile it is:
+ *   sdcc -mstm8 --std-sdcc99 --fverbose-asm --opt-code-size main.c
+ *
  * MIT License
  *
  * Copyright (c) 2018 Jon Axtell
@@ -31,14 +34,18 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#if defined __SDCC__
 #pragma disable_warning 126     // Disable unreachable code due to optimisation
+#endif
 
-#include <stdarg.h>     // For va_list macros in printf style output function
+#include <stdarg.h>             // For va_list macros in printf style output function
 
-#define FLASHER
+// Some preprocessor macros for conditional compilation of various features
+//#define FLASHER
 #define FADER
-#define SERIALIZER
-#define BEEPER
+//#define SERIALIZER
+//#define BEEPER
+#define SQUARER
 
 // Some basic macros to make life easy when using different compilers
 #if defined __IAR_SYSTEMS_ICC__
@@ -605,7 +612,7 @@ typedef struct
     __IO uint8_t TBR;   // Timebase selection register
 } stm8_awu_t;
 
-#define AWU_BaseAddress         0x50F3
+#define AWU_BaseAddress         0x50F0
 #define AWU                     ((stm8_awu_t *)AWU_BaseAddress)
 
 #define AWU_CSR_AWUF_MASK       0x20        // Flag (read clears)
@@ -705,6 +712,61 @@ typedef struct
 
 
 //=============================================================================
+// Independent Watchdog
+//
+
+typedef struct
+{
+    __IO uint8_t KR;    // Key register
+    __IO uint8_t PR;    // Prescaler register
+    __IO uint8_t RLR;   // Reload register
+} stm8_iwdg_t;
+
+#define IWDG_BaseAddress        0x50E0
+#define IWDG                    ((stm8_iwdg_t *)IWDG_BaseAddress)
+
+#define IWDG_KR_KEY_MASK        0xFF        // Key value
+#define IWDG_KR_KEY_ENABLE      0xCC
+#define IWDG_KR_KEY_ACCESS      0x55
+#define IWDG_KR_KEY_REFRESH     0xAA
+
+#define IWDG_PR_PR_MASK         0x07        // Prescaler divider
+#define IWDG_PR_PR_DIV4         0x00        // 15.9ms with RL of 0xFF
+#define IWDG_PR_PR_DIV8         0x01        // 31.9ms with RL of 0xFF
+#define IWDG_PR_PR_DIV16        0x02        // 63.7ms with RL of 0xFF
+#define IWDG_PR_PR_DIV32        0x03        // 127ms with RL of 0xFF
+#define IWDG_PR_PR_DIV64        0x04        // 255ms with RL of 0xFF
+#define IWDG_PR_PR_DIV128       0x05        // 510ms with RL of 0xFF
+#define IWDG_PR_PR_DIV256       0x06        // 1.02s with RL of 0xFF
+
+#define IWDG_RLR_RL_MASK        0xFF        // Watchdog counter reload value
+
+
+//=============================================================================
+// Window Watchdog
+//
+
+typedef struct
+{
+    __IO uint8_t CR;    // Control register
+    __IO uint8_t WR;    // Window register
+} stm8_wwdg_t;
+
+#define WWDG_BaseAddress        0x50D1
+#define WWDG                    ((stm8_wwdg_t *)WWDG_BaseAddress)
+
+#define WWDG_CR_WDGA_MASK       0x80        // Activation bit
+#define WWDG_CR_WDGA_DISABLE    0x00
+#define WWDG_CR_WDGA_ENABLE     0x80
+
+#define WWDG_CR_T_MASK          0x7F        // 7-bit counter
+#define WWDG_CR_T_MAX           0x7F        // Bit 6 must be set to prevent a reset
+#define WWDG_CR_T_MIN           0x3F        // Bit 6 clear so reset will be generated
+
+#define WWDG_WR_W_MASK          0x7F        // 7-bit window value
+
+
+//=============================================================================
 // Timers
 //
 
@@ -750,8 +812,6 @@ typedef struct
 #define TIM1_BaseAddress            0x5250
 #define TIM2_BaseAddress            0x5300
 #define TIM3_BaseAddress            0x5320
-#define TIM5_BaseAddress            0x5300
-#define TIM6_BaseAddress            0x5340
 #define TIM1                        ((stm8_tim1_t *)TIM1_BaseAddress)
 
 #define TIM1_CR1_ARPE_MASK          ((uint8_t)0x80) /* Auto-Reload Preload Enable mask. */
@@ -1284,7 +1344,7 @@ typedef struct
     __IO uint8_t TRISER;    // Rise time register
 } stm8_i2c_t;
 
-#define I2C_BaseAddress             0x0000
+#define I2C_BaseAddress             0x5210
 #define I2C                         ((stm8_i2c_t *)I2C_BaseAddress)
 
 #define I2C_CR1_NOSTRETCH_MASK      ((uint8_t)0x80)     // Clock stretching disable
@@ -1571,12 +1631,8 @@ typedef struct
 
 #define UART1_BaseAddress           0x5340
 #define UART2_BaseAddress           0x5240
-#define UART3_BaseAddress           0x5240
-#define UART4_BaseAddress           0x5240
 #define UART1                       ((stm8_uart1_t *)UART1_BaseAddress)
 #define UART2                       ((stm8_uart2_t *)UART2_BaseAddress)
-#define UART3                       ((stm8_uart3_t *)UART3_BaseAddress)
-#define UART4                       ((stm8_uart4_t *)UART4_BaseAddress)
 
 #define UARTx_SR_TXE_MASK           ((uint8_t)0x80)     // Transmit data register empty
 #define UARTx_SR_TXE_NOTREADY       ((uint8_t)0x00)
@@ -3159,6 +3215,127 @@ uint32_t AWU_MeasureLSI(void)
 }
 
 //=============================================================================
+// Watchdog functions
+//
+//
+typedef enum
+{
+    IWDG_PERIOD_16MS    = 0x00,     // 15.9ms with RL of 0xFF
+    IWDG_PERIOD_32MS    = 0x01,     // 31.9ms with RL of 0xFF
+    IWDG_PERIOD_63MS    = 0x02,     // 63.7ms with RL of 0xFF
+    IWDG_PERIOD_127MS   = 0x03,     // 127ms with RL of 0xFF
+    IWDG_PERIOD_255MS   = 0x04,     // 255ms with RL of 0xFF
+    IWDG_PERIOD_510MS   = 0x05,     // 510ms with RL of 0xFF
+    IWDG_PERIOD_1S      = 0x06      // 1.02s with RL of 0xFF
+} iwdg_period_t;
+
+//-----------------------------------------------------------------------------
+// Initialise the independent watchdog
+//
+void Iwdg_Init(iwdg_period_t period)
+{
+    IWDG->KR = IWDG_KR_KEY_ACCESS;
+    IWDG->PR = (IWDG->PR & ~IWDG_PR_PR_MASK) | period;
+    IWDG->RLR = 0xFF;
+    IWDG->KR = IWDG_KR_KEY_ENABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Refresh the reload register (feed the dog)
+//
+void Iwdg_Refresh(void)
+{
+    IWDG->KR = IWDG_KR_KEY_REFRESH;
+}
+
+//-----------------------------------------------------------------------------
+// Initialise the window watchdog
+//
+void Wwdg_Init(void)
+{
+    WWDG->CR = (WWDG->CR & ~(WWDG_CR_WDGA_MASK | WWDG_CR_T_MASK)) | WWDG_CR_WDGA_ENABLE | WWDG_CR_T_MAX;
+}
+
+//-----------------------------------------------------------------------------
+// Refresh the downcounter register (feed the dog)
+//
+void Wwdg_Refresh(void)
+{
+    WWDG->CR = WWDG_CR_T_MAX;
+}
+
+//-----------------------------------------------------------------------------
+// Return the period between refreshes before a reset occurs
+//
+uint16_t Wwdg_Period(void)
+{
+    uint16_t period = SysClock_GetClockFreq() * 12288;
+    return (period * WWDG_CR_T_MAX) - (period * WWDG_CR_T_MIN);
+}
+
+
+//=============================================================================
+// System Tick functions
+//
+// The system tick is a 1ms timer. It uses the basic 8-bit timer TIM4. Counter
+// is 16 bit so maximum period of time that can be handled is 65s.
+//
+
+__IO uint16_t systick;
+
+//-----------------------------------------------------------------------------
+// Initialise
+//
+// Setup 8-bit basic timer as 1ms system tick using interrupts to update the tick counter
+//
+void Systick_Init(void)
+{
+    Tim4_Config1ms();
+}
+
+//-----------------------------------------------------------------------------
+// Check if a period has passed since the start time.
+//
+// If the timeout has expired, the start value is reset to the current time
+// so that it can be reused.
+//
+bool Systick_Timeout(uint16_t *start, uint16_t period)
+{
+    if (systick - *start >= period)
+    {
+        *start = systick;
+        return true;
+    }
+    return false;
+}
+
+//-----------------------------------------------------------------------------
+// Wait a period of time
+//
+void Systick_Wait(uint16_t period)
+{
+    uint16_t start = systick;
+    while (!Systick_Timeout(&start, period))
+    {
+    }
+}
+
+//-----------------------------------------------------------------------------
+// Interrupt handler for the system tick counter
+//
+#if defined __IAR_SYSTEMS_ICC__
+#pragma vector=23
+#endif
+INTERRUPT(TIM4_UPD_OVF_IRQHandler, 23)
+{
+    ++systick;
+
+    // Clear Interrupt Pending bit
+    TIM4->SR1 = (TIM4->SR1 & ~TIM4_SR1_UIF_MASK) | TIM4_SR1_UIF_CLEAR;
+}
+
+
+//=============================================================================
 // I2C functions
 //
 //
@@ -3186,27 +3363,33 @@ uint32_t AWU_MeasureLSI(void)
 } i2c_speed_t;
 */
 
+typedef enum
+{
+    I2C_SPEED_STANDARD,
+    I2C_SPEED_FULL
+} i2c_speed_t;
+
 // Use when clock is 16Mhz
 // MSbit is the duty cycle, rest is the CCR value
 typedef enum
 {
-    I2C_SPEED_400KHZ    = 0x000D,
-    I2C_SPEED_370KHZ    = 0x000E,
-    I2C_SPEED_350KHZ    = 0x000F,
-    I2C_SPEED_320KHZ    = 0x8002,
-    I2C_SPEED_300KHZ    = 0x0011,
-    I2C_SPEED_270KHZ    = 0x0013,
-    I2C_SPEED_250KHZ    = 0x0015,
-    I2C_SPEED_220KHZ    = 0x0018,
-    I2C_SPEED_200KHZ    = 0x001A,
-    I2C_SPEED_170KHZ    = 0x001F,
-    I2C_SPEED_150KHZ    = 0x0023,
-    I2C_SPEED_120KHZ    = 0x002C,
-    I2C_SPEED_100KHZ    = 0x0050,
-    I2C_SPEED_50KHZ     = 0x00A0,
-    I2C_SPEED_30KHZ     = 0x010A,
-    I2C_SPEED_20KHZ     = 0x0190
-} i2c_speed_t;
+    I2C_FREQUENCY_400KHZ    = 0x000D,
+    I2C_FREQUENCY_370KHZ    = 0x000E,
+    I2C_FREQUENCY_350KHZ    = 0x000F,
+    I2C_FREQUENCY_320KHZ    = 0x8002,
+    I2C_FREQUENCY_300KHZ    = 0x0011,
+    I2C_FREQUENCY_270KHZ    = 0x0013,
+    I2C_FREQUENCY_250KHZ    = 0x0015,
+    I2C_FREQUENCY_220KHZ    = 0x0018,
+    I2C_FREQUENCY_200KHZ    = 0x001A,
+    I2C_FREQUENCY_170KHZ    = 0x001F,
+    I2C_FREQUENCY_150KHZ    = 0x0023,
+    I2C_FREQUENCY_120KHZ    = 0x002C,
+    I2C_FREQUENCY_100KHZ    = 0x0050,
+    I2C_FREQUENCY_50KHZ     = 0x00A0,
+    I2C_FREQUENCY_30KHZ     = 0x010A,
+    I2C_FREQUENCY_20KHZ     = 0x0190
+} i2c_frequency_t;
 
 typedef enum
 {
@@ -3452,8 +3635,14 @@ typedef enum
 // Calculate CCR values
 //
 // This function will calculate the CCR and DUTY values for a given peripheral
-// clock frequency and requested I2C data rate.
+// clock frequency and requested I2C data rate. The function works by iteratively
+// going through all potential CCR/DUTY values and finding the one which is the
+// closest to the requested speed.
 //
+// The system clock in Mhz is passed in freq and the requested speed is passed
+// in speed. The CCR & DUTY values that produce an actual speed with the smallest
+// margin of error are returned.
+
 // Calculation to deduce CCR from a requested frequency is:
 // 1/((CCR/freq)) * [2|3|25]
 //
@@ -3487,61 +3676,79 @@ typedef enum
 // 1000000000 / ((20000/16) * 25) => 320000 => 320Khz
 // 1000000000 / ((250000/10) * 2) => 20000 => 20Khz
 //
-static uint32_t CalcSpeed(uint32_t ccr, uint8_t freq, uint8_t duty)
+
+// Calculate actual speed for a given clock frequency and ccr/duty values
+static uint32_t CalcSpeed(uint8_t freq, uint32_t ccr, uint8_t duty)
 {
     return 1000000000UL / (((ccr * 1000UL) / freq) * (uint32_t)(duty));
 }
 
-void I2C_CalculateCCR(uint8_t freq, uint32_t req_speed, uint16_t *ccr, uint8_t *duty, uint32_t *actual)
+// Calculate margin of error for actual speed against requested speed
+// Returns value accurate to two decimal places but as integer so needs dividing by 100.
+static uint32_t CalcError(uint32_t req, uint32_t act)
+{
+    if (req > act)
+    {
+        return ((req - act) * 10000) / req;
+    }
+    return ((act - req) * 10000) / req;
+}
+
+void I2C_CalculateCCR(uint8_t freq, uint32_t speed, uint16_t *ccr, uint8_t *duty, uint32_t *actual, uint32_t *error)
 {
     uint32_t prev_speed_0 = 0;
-    uint32_t prev_speed_1 = 0;
     uint32_t calc_speed_0;
     uint32_t calc_speed_1;
-    uint32_t diff_0;
-    uint32_t diff_1;
     uint32_t i;
 
-    if (req_speed > 100000)
+    if (speed > 100000)
     {
         // Fast mode speeds, duty used in this mode so two calculations need to be carried out
         for (i = 1; i < 4096; ++i)
         {
-            calc_speed_0 = CalcSpeed(i, freq, 3);
-            calc_speed_1 = CalcSpeed(i, freq, 25);
-            if (calc_speed_0 == req_speed)
+            calc_speed_0 = CalcSpeed(freq, i, 3);       // Duty 0 (2:1)
+            calc_speed_1 = CalcSpeed(freq, i, 25);      // Duty 1 (16:9)
+            if (calc_speed_0 == speed)
             {
                 *duty = 0;
                 *ccr = i;
                 *actual = calc_speed_0;
+                *error = 0;
                 return;
             }
-            if (calc_speed_1 == req_speed)
+            if (calc_speed_1 == speed)
             {
                 *duty = 1;
                 *ccr = i;
                 *actual = calc_speed_1;
+                *error = 0;
                 return;
             }
-            if ((calc_speed_0 < req_speed) && (calc_speed_1 < req_speed))            
+            if (calc_speed_0 < speed)
             {
-                diff_0 = req_speed - prev_speed_0;
-                diff_1 = req_speed - prev_speed_1;
-                if (diff_0 > diff_1)
+                // Calculated speed lower than requested, find which is closer,
+                // the current speed or the previously calculated speed.
+                //
+                // Duty is nearly always 0 in this case, so assume 0.
+                // TODO: Find out if this is case with duty=0 at all clock frequencies.
+                *duty = 0;
+                if ((prev_speed_0 - speed) > (speed - calc_speed_0))
                 {
-                    *duty = 0;
-                    *actual = prev_speed_0;
+                    // Currently calculated speed is closer
+                    *error = CalcError(speed, calc_speed_0);
+                    *actual = calc_speed_0;
+                    *ccr = i;
                 }
                 else
                 {
-                    *duty = 1;
-                    *actual = prev_speed_1;
+                    // Previously calculated speed is closer
+                    *error = CalcError(speed, prev_speed_0);
+                    *actual = prev_speed_0;
+                    *ccr = i - 1;
                 }
-                *ccr = i - 1;
                 return;
             }
             prev_speed_0 = calc_speed_0;
-            prev_speed_1 = calc_speed_1;
         }
     }
     else
@@ -3549,26 +3756,44 @@ void I2C_CalculateCCR(uint8_t freq, uint32_t req_speed, uint16_t *ccr, uint8_t *
         // Standard mode speeds, duty is ignored in this mode
         for (i = 1; i < 4096; ++i)
         {
-            calc_speed_0 = CalcSpeed(i, freq, 2);
-            if (calc_speed_0 == req_speed)
+            calc_speed_0 = CalcSpeed(freq, i, 2);       // 1:1 duty cycle
+            if (calc_speed_0 == speed)
             {
                 *duty = 0;
                 *ccr = i;
                 *actual = calc_speed_0;
+                *error = 0;
                 return;
             }
-            if (calc_speed_0 < req_speed)
+            if (calc_speed_0 < speed)
             {
                 *duty = 0;
-                *ccr = i - 1;
-                *actual = prev_speed_0;
+                if ((prev_speed_0 - speed) > (speed - calc_speed_0))
+                {
+                    // Currently calculated speed is closer
+                    *error = CalcError(speed, calc_speed_0);
+                    *actual = calc_speed_0;
+                    *ccr = i;
+                }
+                else
+                {
+                    // Previously calculated speed is closer
+                    *error = CalcError(speed, prev_speed_0);
+                    *actual = prev_speed_0;
+                    *ccr = i - 1;
+                }
                 return;
             }
             prev_speed_0 = calc_speed_0;
         }
     }
+
+    // No matching settings found, probably due to clock frequency being too low
+    // for the requested speed.
     *ccr = 0;
     *duty = 0;
+    *actual = 0;
+    *error = 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -3576,7 +3801,7 @@ void I2C_CalculateCCR(uint8_t freq, uint32_t req_speed, uint16_t *ccr, uint8_t *
 //
 void I2C_Disable(void)
 {
-    I2C->CR1 = (I2C->CR1 & I2C_CR1_PE_MASK) | I2C_CR1_PE_DISABLE;
+    I2C->CR1 = (I2C->CR1 & ~I2C_CR1_PE_MASK) | I2C_CR1_PE_DISABLE;
 }
 
 //-----------------------------------------------------------------------------
@@ -3584,7 +3809,7 @@ void I2C_Disable(void)
 //
 void I2C_Enable(void)
 {
-    I2C->CR1 = (I2C->CR1 & I2C_CR1_PE_MASK) | I2C_CR1_PE_ENABLE;
+    I2C->CR1 = (I2C->CR1 & ~I2C_CR1_PE_MASK) | I2C_CR1_PE_ENABLE;
 }
 
 //-----------------------------------------------------------------------------
@@ -3592,7 +3817,7 @@ void I2C_Enable(void)
 //
 void I2C_DisbleStart(void)
 {
-    I2C->CR2 = (I2C->CR2 & I2C_CR2_START_MASK) | I2C_CR2_START_DISABLE;
+    I2C->CR2 = (I2C->CR2 & ~I2C_CR2_START_MASK) | I2C_CR2_START_DISABLE;
 }
 
 //-----------------------------------------------------------------------------
@@ -3600,7 +3825,7 @@ void I2C_DisbleStart(void)
 //
 void I2C_EnableStart(void)
 {
-    I2C->CR2 = (I2C->CR2 & I2C_CR2_START_MASK) | I2C_CR2_START_ENABLE;
+    I2C->CR2 = (I2C->CR2 & ~I2C_CR2_START_MASK) | I2C_CR2_START_ENABLE;
 }
 
 //-----------------------------------------------------------------------------
@@ -3608,7 +3833,7 @@ void I2C_EnableStart(void)
 //
 void I2C_DisableStop(void)
 {
-    I2C->CR2 = (I2C->CR2 & I2C_CR2_STOP_MASK) | I2C_CR2_STOP_DISABLE;
+    I2C->CR2 = (I2C->CR2 & ~I2C_CR2_STOP_MASK) | I2C_CR2_STOP_DISABLE;
 }
 
 //-----------------------------------------------------------------------------
@@ -3616,7 +3841,23 @@ void I2C_DisableStop(void)
 //
 void I2C_EnableStop(void)
 {
-    I2C->CR2 = (I2C->CR2 & I2C_CR2_STOP_MASK) | I2C_CR2_STOP_ENABLE;
+    I2C->CR2 = (I2C->CR2 & ~I2C_CR2_STOP_MASK) | I2C_CR2_STOP_ENABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Disable sending ACK
+//
+void I2C_DisableACK(void)
+{
+    I2C->CR2 = (I2C->CR2 & ~I2C_CR2_ACK_MASK) | I2C_CR2_ACK_DISABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Enable sending ACK condition
+//
+void I2C_EnableACK(void)
+{
+    I2C->CR2 = (I2C->CR2 & ~I2C_CR2_ACK_MASK) | I2C_CR2_ACK_ENABLE;
 }
 
 //-----------------------------------------------------------------------------
@@ -3627,9 +3868,9 @@ void I2C_EnableStop(void)
 //
 void I2C_SoftwareReset(void)
 {
-    I2C->CR2 = (I2C->CR2 & I2C_CR2_SWRST_MASK) | I2C_CR2_SWRST_RESET;
+    I2C->CR2 = (I2C->CR2 & ~I2C_CR2_SWRST_MASK) | I2C_CR2_SWRST_RESET;
     // TODO: Any delay required?
-    I2C->CR2 = (I2C->CR2 & I2C_CR2_SWRST_MASK) | I2C_CR2_SWRST_RUNNING;
+    I2C->CR2 = (I2C->CR2 & ~I2C_CR2_SWRST_MASK) | I2C_CR2_SWRST_RUNNING;
 }
 
 //-----------------------------------------------------------------------------
@@ -3637,7 +3878,7 @@ void I2C_SoftwareReset(void)
 //
 void I2C_DisableClockStretch(void)
 {
-    I2C->CR1 = (I2C->CR1 & I2C_CR1_NOSTRETCH_MASK) | I2C_CR1_NOSTRETCH_DISABLE;
+    I2C->CR1 = (I2C->CR1 & ~I2C_CR1_NOSTRETCH_MASK) | I2C_CR1_NOSTRETCH_DISABLE;
 }
 
 //-----------------------------------------------------------------------------
@@ -3645,7 +3886,19 @@ void I2C_DisableClockStretch(void)
 //
 void I2C_EnableClockStretch(void)
 {
-    I2C->CR1 = (I2C->CR1 & I2C_CR1_NOSTRETCH_MASK) | I2C_CR1_NOSTRETCH_ENABLE;
+    I2C->CR1 = (I2C->CR1 & ~I2C_CR1_NOSTRETCH_MASK) | I2C_CR1_NOSTRETCH_ENABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Check bus busy state
+//
+// Note that this reads SR3 and reading this register after SR1 has been read
+// clears the ADDR flag in SR1. Therefore only call this function before any
+// communications is started, do not use in the middle of any transaction.
+//
+bool I2C_BusBusy(void)
+{
+    return (I2C->SR3 & I2C_SR3_BUSY_MASK) == I2C_SR3_BUSY_ONGOING;
 }
 
 //-----------------------------------------------------------------------------
@@ -3654,41 +3907,23 @@ void I2C_EnableClockStretch(void)
 // Note that a system clock frequency multiple of 10Mhz is needed as this
 // satisfies the requirement for fast mode at 400Khz.
 //
-void I2C_Init(uint32_t speed)
+void I2C_Init(i2c_speed_t speed, uint8_t freq, uint16_t ccr, uint8_t duty)
 {
-    I2C->FREQR = SysClock_GetClockFreq() / 1000000;
-
     I2C_Disable();
-
-    if (speed < 100000)
+    I2C->FREQR = freq;
+    I2C->CCRL = (ccr >> 0) & I2C_CCRL_CCR_MASK;
+    I2C->CCRH = (ccr >> 8) & I2C_CCRH_CCR_MASK;
+    I2C->CCRH = (I2C->CCRH & ~I2C_CCRH_FS_MASK) | speed;
+    I2C->CCRH = (I2C->CCRH & ~I2C_CCRH_DUTY_MASK) | duty;
+    I2C->OARH = (I2C->OARH & ~(I2C_OARH_ADDMODE_MASK | I2C_OARH_ADDCONF_MASK)) | I2C_OARH_ADDMODE_7BIT | I2C_OARH_ADDCONF;
+    if (speed == I2C_SPEED_STANDARD)
     {
-        // Standard mode speeds
-        uint16_t counter = SysClock_GetClockFreq() / (speed * 2);
-        if (counter < 4)
-        {
-            counter = 4;
-        }
-        I2C->CCRL = (counter >> 0) & I2C_CCRL_CCR_MASK;
-        I2C->CCRH = (counter >> 8) & I2C_CCRH_CCR_MASK;
-        I2C->CCRH = (I2C->CCRH & I2C_CCRH_FS_MASK) | I2C_CCRH_FS_STANDARD;
-        I2C->CCRH = (I2C->CCRH & I2C_CCRH_DUTY_MASK) | I2C_CCRH_DUTY_2;
         I2C->TRISER = I2C->FREQR + 1;
     }
     else
     {
-        // Fast mode speeds
-        uint16_t counter = SysClock_GetClockFreq() / (speed * 25);
-        if (counter < 1)
-        {
-            counter = 1;
-        }
-        I2C->CCRL = (counter >> 0) & I2C_CCRL_CCR_MASK;
-        I2C->CCRH = (counter >> 8) & I2C_CCRH_CCR_MASK;
-        I2C->CCRH = (I2C->CCRH & I2C_CCRH_FS_MASK) | I2C_CCRH_FS_FAST;
-        I2C->CCRH = (I2C->CCRH & I2C_CCRH_DUTY_MASK) | I2C_CCRH_DUTY_169;
         I2C->TRISER = ((I2C->FREQR * 3) / 10) + 1;;
     }
-
     I2C_Enable();
 }
 
@@ -3699,33 +3934,104 @@ void I2C_Init(uint32_t speed)
 //
 void I2C_ConfigStdModeMaster(void)
 {
+    I2C_EnableACK();
+    I2C_EnableStart();
 }
 
 //-----------------------------------------------------------------------------
 // Read a byte from the data register
 //
-uint8_t I2C_ReceiveData(void)
+bool I2C_ReceiveData(uint8_t *data)
 {
-    return I2C->DR;
+    uint16_t timeout;
+
+    I2C->CR2 = (I2C->CR2 & ~ I2C_CR2_ACK_MASK) | I2C_CR2_ACK_ENABLE;
+    while ((I2C->SR1 & I2C_SR1_RXNE_MASK) == I2C_SR1_RXNE_EMPTY)
+    {
+        if (Systick_Timeout(&timeout, 100))
+        {
+            return false;
+        }
+    }
+    *data = I2C->DR;
+    return true;
 }
 
 //-----------------------------------------------------------------------------
 // Write a byte to the data register
 //
-void I2C_SendData(uint8_t data)
+bool I2C_SendData(uint8_t data)
 {
+    uint16_t timeout;
+
     I2C->DR = data;
+    while ((I2C->SR1 & I2C_SR1_TXE_MASK) == I2C_SR1_TXE_NOT_EMPTY)
+    {
+        if (Systick_Timeout(&timeout, 100))
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 //-----------------------------------------------------------------------------
 // Send address to slave device
 //
-// This is for 7-bit addressing which requires the read/write direction to be
-// included. 7-bit address is in the range 0-7F.
+// This is for 7-bit addressing in the range 0-7F. The address is shifted
+// internally to make space for the r/w flag.
 //
-void I2C_SendAddress(uint8_t addr, i2c_direction_t dir)
+bool I2C_SendAddress(uint8_t addr, i2c_direction_t dir)
 {
+    uint16_t timeout;
+
     I2C->DR = (addr << 1) | dir;
+    while ((I2C->SR1 & I2C_SR1_ADDR_MASK) == I2C_SR1_ADDR_NOT_END_OF_TX)
+    {
+        if (Systick_Timeout(&timeout, 100))
+        {
+            return false;
+        }
+    }
+    (void)I2C->SR3; // Clear EV6
+    I2C->CR2 = (I2C->CR2 & ~I2C_CR2_ACK_MASK) | I2C_CR2_ACK_ENABLE;
+    return true;
+}
+
+//-----------------------------------------------------------------------------
+// Set the start condition
+//
+bool I2C_Start(void)
+{
+    uint16_t timeout;
+
+    I2C->CR2 = (I2C->CR2 & ~I2C_CR2_START_MASK) | I2C_CR2_START_ENABLE;
+    while ((I2C->SR1 & I2C_SR1_SB_MASK) == I2C_SR1_SB_NOT_DONE)
+    {
+        if (Systick_Timeout(&timeout, 100))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+//-----------------------------------------------------------------------------
+// Set the stop condition
+//
+bool I2C_Stop(void)
+{
+    uint16_t timeout;
+
+    I2C->CR2 = (I2C->CR2 & ~I2C_CR2_STOP_MASK) | I2C_CR2_STOP_ENABLE;
+    while ((I2C->SR3 & I2C_SR3_MSL_MASK) == I2C_SR3_MSL_MASTER)
+    {
+        if (Systick_Timeout(&timeout, 100))
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -3741,67 +4047,7 @@ void I2C_Transmit(uint8_t address, const uint8_t *data, uint8_t len)
 //
 uint8_t I2C_Receive(uint8_t address, const uint8_t *data, uint8_t len)
 {
-
-}
-
-//=============================================================================
-// System Tick functions
-//
-// The system tick is a 1ms timer. It uses the basic 8-bit timer TIM4. Counter
-// is 16 bit so maximum period of time that can be handled is 65s.
-//
-
-__IO uint16_t systick;
-
-//-----------------------------------------------------------------------------
-// Initialise
-//
-// Setup 8-bit basic timer as 1ms system tick using interrupts to update the tick counter
-//
-void Systick_Init(void)
-{
-    Tim4_Config1ms();
-}
-
-//-----------------------------------------------------------------------------
-// Check if a period has passed since the start time.
-//
-// If the timeout has expired, the start value is reset to the current time
-// so that it can be reused.
-//
-bool Systick_Timeout(uint16_t *start, uint16_t period)
-{
-    if (systick - *start >= period)
-    {
-        *start = systick;
-        return true;
-    }
-    return false;
-}
-
-//-----------------------------------------------------------------------------
-// Wait a period of time
-//
-void Systick_Wait(uint16_t period)
-{
-    uint16_t start = systick;
-    while (!Systick_Timeout(&start, period))
-    {
-    }
-}
-
-//-----------------------------------------------------------------------------
-// Interrupt handler for the system tick counter
-//
-#if defined __IAR_SYSTEMS_ICC__
-#pragma vector=23
-#endif
-INTERRUPT(TIM4_UPD_OVF_IRQHandler, 23)
-{
-    ++systick;
-
-    // Clear Interrupt Pending bit
-    TIM4->SR1 = (TIM4->SR1 & ~TIM4_SR1_UIF_MASK) | TIM4_SR1_UIF_CLEAR;
+	return 0;
 }
 
 //=============================================================================
@@ -3822,6 +4068,15 @@ void Gpio_Config(void)
     GPIOD->DDR |= GPIO_DDR_4_OUTPUT;
     GPIOD->CR1 |= GPIO_CR1_4_OUTPUT_PUSHPULL;
     GPIOD->CR2 |= GPIO_CR2_4_OUTPUT_2MHZ;
+
+    // I2C
+    GPIOB->DDR |= GPIO_DDR_4_OUTPUT;
+    GPIOB->CR1 |= GPIO_CR1_4_OUTPUT_OPENDRAIN;
+    GPIOB->CR2 |= GPIO_CR2_4_OUTPUT_2MHZ;
+
+    GPIOB->DDR |= GPIO_DDR_5_OUTPUT;
+    GPIOB->CR1 |= GPIO_CR1_5_OUTPUT_OPENDRAIN;
+    GPIOB->CR2 |= GPIO_CR2_5_OUTPUT_2MHZ;
 }
 
 //-----------------------------------------------------------------------------
@@ -3846,7 +4101,7 @@ void Gpio_TurnOffLED(void)
 
 void TestI2CSpeeds(uint8_t clock)
 {
-    static const uint32_t speed[] = 
+    static const uint32_t speed[] =
     {
         400000,
         370000,
@@ -3870,11 +4125,12 @@ void TestI2CSpeeds(uint8_t clock)
     uint8_t duty;
     uint32_t actual;
 
-    OutputText("Clock=%i\r\n", clock);
+    OutputText("Clock=%iMhz\r\n", clock);
     for (i = 0; i < sizeof(speed) / sizeof(uint32_t); ++i)
     {
-        I2C_CalculateCCR(clock, speed[i], &ccr, &duty, &actual);
-        OutputText("Req=%6lu, Actual=%6lu, CCR=%4i, Duty=%1i\r\n", speed[i], actual, ccr, duty);
+        uint32_t error;
+        I2C_CalculateCCR(clock, speed[i], &ccr, &duty, &actual, &error);
+        OutputText("Req=%6lu, Actual=%6lu, Error=%4lu.%02lu, CCR=%4i, Duty=%1i\r\n", speed[i], actual, (error / 100), error - ((error / 100) * 100), ccr, duty);
     }
 }
 
@@ -3884,13 +4140,13 @@ circular_buffer_t txbuf;
 void main(void)
 {
 #ifdef FADER
-    uint16_t value = 0;
-    uint16_t timer = 0;
+    uint16_t fade = 0;
     uint16_t fader = 0;
+    uint8_t up = 0;
 #endif
 #ifdef FLASHER
+    uint16_t flasher = 0;
     uint8_t flash = 0;
-    uint8_t up = 0;
 #endif
 #ifdef SERIALIZER
     uint16_t transmitter = 0;
@@ -3899,6 +4155,9 @@ void main(void)
     beep_prescaler_t pre = BEEP_PRESCALE_2;
     beep_freq_t freq = BEEP_8KHZ;
     uint16_t beeper;
+#endif
+#ifdef SQUARER
+    uint16_t squarer = 0;
 #endif
     uint32_t lsi_freq = 0;
     uint16_t ccr;
@@ -3916,23 +4175,52 @@ void main(void)
 
     enableInterrupts();
 
+#ifdef BEEPER
     Beep_SetPrescaler(BEEP_PRESCALE_2);
     Beep_SetFrequency(BEEP_8KHZ);
     Beep_On();
+#endif
 
-    TestI2CSpeeds(20);
-    TestI2CSpeeds(16);
-    TestI2CSpeeds(10);
-    TestI2CSpeeds(8);
-    TestI2CSpeeds(1);
+#ifdef SQUARER
+    //TestI2CSpeeds(20);
+    //TestI2CSpeeds(16);
+    //TestI2CSpeeds(10);
+    //TestI2CSpeeds(8);
+    //TestI2CSpeeds(1);
+
+    I2C_Init(I2C_SPEED_STANDARD, 16, 0x50, 0);
+    I2C_ConfigStdModeMaster();
+#endif
 
     for (;;)
     {
+        // Do I2C stuff
+#ifdef SQUARER
+        if (Systick_Timeout(&squarer, 500))
+        {
+            static int counter;
+            if (!I2C_BusBusy())
+            {
+                OutputText("I2C kicked %d\r\n", ++counter);
+                if (!I2C_Start())
+                {
+                    OutputText("Start failed SR1=%x SR2=%x SR3=%x\r\n", I2C->SR1, I2C->SR2, I2C->SR3);
+                }
+                else
+                {
+                    I2C_SendAddress(0x40, I2C_DIRECTION_WRITE);
+                    I2C_SendData(0xFF);
+                    I2C_Stop();
+                }
+            }
+        }
+#endif // SQUARER
+
         // Flash the LED if PD7 is connected
 #ifdef FLASHER
         if (flash)
         {
-            if (Systick_Timeout(&timer, 100))
+            if (Systick_Timeout(&flasher, 100))
             {
                 Gpio_TurnOnLED();
                 flash = 0;
@@ -3940,40 +4228,42 @@ void main(void)
         }
         else
         {
-            if (Systick_Timeout(&timer, 400))
+            if (Systick_Timeout(&flasher, 400))
             {
                 Gpio_TurnOffLED();
                 flash = 1;
             }
         }
-#endif
+#endif // FLASHER
 
         // Fade the LED in and out if PC3 is connected
 #ifdef FADER
         if (Systick_Timeout(&fader, 10))
         {
-            Tim1_SetCounter(value);
+            Tim1_SetCounter(fade);
             if (up)
             {
-                value += 10;
-                if (value > TIM1_PERIOD)
+                fade += 10;
+                if (fade > TIM1_PERIOD)
                 {
                     up = 0;
                 }
+                GPIOB->ODR = (GPIOB->ODR & ~GPIO_ODR_4_MASK) | GPIO_ODR_4_LOW;
             }
             else
             {
-                if (value > 0)
+                if (fade > 0)
                 {
-                    value -= 10;
+                    fade -= 10;
                 }
                 else
                 {
                     up = 1;
                 }
+                GPIOB->ODR = (GPIOB->ODR & ~GPIO_ODR_4_MASK) | GPIO_ODR_4_HIGH;
             }
         }
-#endif
+#endif // FADER
 
 #ifdef BEEPER
         if (Systick_Timeout(&beeper, 100))
@@ -3989,7 +4279,7 @@ void main(void)
                 Beep_SetFrequency(freq);
             }
         }
-#endif
+#endif // BEEPER
 
         // Output a message using interrupts and a circular buffer
 #ifdef SERIALIZER
@@ -4003,7 +4293,9 @@ void main(void)
         }
 
         // Indicate via the brightness of the LED, the amount of buffer space in use
-        //Tim1_SetCounter((TIM1_PERIOD * 100) /  CircBuf_PercentUsed(&tx_cirbuf));
-#endif
+#ifndef FADER
+        Tim1_SetCounter((TIM1_PERIOD * 100) /  CircBuf_PercentUsed(&tx_cirbuf));
+#endif // FADER
+#endif // SERIALIZER
     }
 }
