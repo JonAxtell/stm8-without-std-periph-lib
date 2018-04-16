@@ -42,8 +42,8 @@
 
 // Some preprocessor macros for conditional compilation of various features
 //#define FLASHER
-#define FADER
-//#define SERIALIZER
+//#define FADER
+#define SERIALIZER
 //#define BEEPER
 #define SQUARER
 
@@ -70,7 +70,7 @@
 #define NULL    ((void *)0)
 typedef int bool;
 #define false   0
-#define true    (!false)
+#define true    1
 typedef signed char int8_t;
 typedef signed short int16_t;
 typedef signed long int32_t;
@@ -104,7 +104,10 @@ typedef struct
 //=============================================================================
 // Initialise circular buffer
 //
-// Size must be a power of 2, eg. 2, 4, 8, 16, 32, 64, 128, 256.
+// Size must be a power of 2, eg. 2, 4, 8, 16, 32, 64, 128, 256. To optimise
+// manipulation of the positions of the in and out points into the buffer
+// masking is carried out on the variables. This does not require testing
+// the position against the size, it just requires masking.
 //
 void CircBuf_Init(circular_buffer_t *buf, uint8_t *buffer, uint8_t size)
 {
@@ -1971,6 +1974,38 @@ circular_buffer_t *tx2_cirbuf;
 circular_buffer_t *rx2_cirbuf;
 
 //-----------------------------------------------------------------------------
+// Disable transmit interrupts
+//
+inline void Uart2_DisableTxInterrupts(void)
+{
+    UART2->CR2 = (UART2->CR2 & ~UARTx_CR2_TIEN_MASK) | UARTx_CR2_TIEN_DISABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Enable transmit interrupts
+//
+inline void Uart2_EnableTxInterrupts(void)
+{
+    UART2->CR2 = (UART2->CR2 & ~UARTx_CR2_TIEN_MASK) | UARTx_CR2_TIEN_ENABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Disable receiver interrupts
+//
+inline void Uart2_DisableRxInterrupts(void)
+{
+    UART2->CR2 = (UART2->CR2 & ~UARTx_CR2_RIEN_MASK) | UARTx_CR2_RIEN_DISABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Enable receiver interrupts
+//
+inline void Uart2_EnableRxInterrupts(void)
+{
+    UART2->CR2 = (UART2->CR2 & ~UARTx_CR2_RIEN_MASK) | UARTx_CR2_RIEN_ENABLE;
+}
+
+//-----------------------------------------------------------------------------
 // Set up the circular buffers for the UART functions to use
 //
 void Uart2_Init(circular_buffer_t *tx, circular_buffer_t *rx)
@@ -2013,38 +2048,6 @@ void Uart2_Config9600_8N1(void)
 }
 
 //-----------------------------------------------------------------------------
-// Disable transmit interrupts
-//
-inline void Uart2_DisableTxInterrupts(void)
-{
-    UART2->CR2 = (UART2->CR2 & ~UARTx_CR2_TIEN_MASK) | UARTx_CR2_TIEN_DISABLE;
-}
-
-//-----------------------------------------------------------------------------
-// Enable transmit interrupts
-//
-inline void Uart2_EnableTxInterrupts(void)
-{
-    UART2->CR2 = (UART2->CR2 & ~UARTx_CR2_TIEN_MASK) | UARTx_CR2_TIEN_ENABLE;
-}
-
-//-----------------------------------------------------------------------------
-// Disable receiver interrupts
-//
-inline void Uart2_DisableRxInterrupts(void)
-{
-    UART2->CR2 = (UART2->CR2 & ~UARTx_CR2_RIEN_MASK) | UARTx_CR2_RIEN_DISABLE;
-}
-
-//-----------------------------------------------------------------------------
-// Enable receiver interrupts
-//
-inline void Uart2_EnableRxInterrupts(void)
-{
-    UART2->CR2 = (UART2->CR2 & ~UARTx_CR2_RIEN_MASK) | UARTx_CR2_RIEN_ENABLE;
-}
-
-//-----------------------------------------------------------------------------
 // Send a byte and return immediately (so long as circular buffer is not full)
 //
 // If this is the first byte in a packet, then it will be placed in the shift
@@ -2084,9 +2087,52 @@ bool Uart2_SendByte(uint8_t byte) CRITICAL
     return true;
 }
 
-bool Uart2_BufferIsFull(void)
+//-----------------------------------------------------------------------------
+// Read a byte from the circular receive buffer, indicates if a byte was available
+//
+bool Uart2_ReceiveByte(uint8_t *byte) CRITICAL
+{
+    uint8_t data;
+    if (!CircBuf_IsEmpty(rx2_cirbuf))
+    {
+        // Following two lines are necessary to get round a bug in SDCC
+        data = CircBuf_Get(rx2_cirbuf);
+        *byte = data;
+        return true;
+    }
+    return false;
+}
+
+//-----------------------------------------------------------------------------
+// Check if circular buffer is full
+//
+bool Uart2_TxBufferIsFull(void)
 {
     if (CircBuf_IsFull(tx2_cirbuf))
+    {
+        return true;
+    }
+    return false;
+}
+
+//-----------------------------------------------------------------------------
+// Check if circular buffer is full
+//
+bool Uart2_RxBufferIsFull(void)
+{
+    if (CircBuf_IsFull(rx2_cirbuf))
+    {
+        return true;
+    }
+    return false;
+}
+
+//-----------------------------------------------------------------------------
+// Check if circular buffer is empty
+//
+bool Uart2_RxBufferIsEmpty(void)
+{
+    if (CircBuf_IsEmpty(rx2_cirbuf))
     {
         return true;
     }
@@ -2115,12 +2161,23 @@ void Uart2_DirectSendByte(uint8_t byte)
 }
 
 //-----------------------------------------------------------------------------
+// Receive a byte, waiting till one has been received
+//
+uint8_t Uart2_BlockingReceiveByte(void)
+{
+    while (CircBuf_IsEmpty(rx2_cirbuf))
+    {
+    }
+    return CircBuf_Get(rx2_cirbuf);
+}
+
+//-----------------------------------------------------------------------------
 // Interrupt handler for the transmission
 //
 #if defined __IAR_SYSTEMS_ICC__
 #pragma vector=20
 #endif
-INTERRUPT(UART2_TX_IRQHandler, 20)
+INTERRUPT(UART2_TX_IRQHandler, 20) CRITICAL
 {
     //if (!CircBuf_IsEmpty(&tx_cirbuf))
     {
@@ -2138,9 +2195,16 @@ INTERRUPT(UART2_TX_IRQHandler, 20)
 #if defined __IAR_SYSTEMS_ICC__
 #pragma vector=21
 #endif
-INTERRUPT(UART2_RX_IRQHandler, 21)
+INTERRUPT(UART2_RX_IRQHandler, 21) CRITICAL
 {
-    (void)UART2->DR;      // Clears RXNE flag
+    if ((UART2->SR & UARTx_SR_RXNE_MASK) == UARTx_SR_RXNE_READY)
+    {
+        uint8_t byte = UART2->DR;   // Clears RXNE flag
+        if (!CircBuf_IsFull(rx2_cirbuf))
+        {
+            CircBuf_Put(rx2_cirbuf, byte);
+        }
+    }
 }
 
 //=============================================================================
@@ -3994,7 +4058,7 @@ bool I2C_SendAddress(uint8_t addr, i2c_direction_t dir)
         }
     }
     (void)I2C->SR3; // Clear EV6
-    I2C->CR2 = (I2C->CR2 & ~I2C_CR2_ACK_MASK) | I2C_CR2_ACK_ENABLE;
+    //I2C->CR2 = (I2C->CR2 & ~I2C_CR2_ACK_MASK) | I2C_CR2_ACK_ENABLE;
     return true;
 }
 
@@ -4047,7 +4111,7 @@ void I2C_Transmit(uint8_t address, const uint8_t *data, uint8_t len)
 //
 uint8_t I2C_Receive(uint8_t address, const uint8_t *data, uint8_t len)
 {
-	return 0;
+    return 0;
 }
 
 //=============================================================================
@@ -4073,10 +4137,12 @@ void Gpio_Config(void)
     GPIOB->DDR |= GPIO_DDR_4_OUTPUT;
     GPIOB->CR1 |= GPIO_CR1_4_OUTPUT_OPENDRAIN;
     GPIOB->CR2 |= GPIO_CR2_4_OUTPUT_2MHZ;
+    GPIOB->ODR |= GPIO_ODR_4_HIGH;
 
     GPIOB->DDR |= GPIO_DDR_5_OUTPUT;
     GPIOB->CR1 |= GPIO_CR1_5_OUTPUT_OPENDRAIN;
     GPIOB->CR2 |= GPIO_CR2_5_OUTPUT_2MHZ;
+    GPIOB->ODR |= GPIO_ODR_5_HIGH;
 }
 
 //-----------------------------------------------------------------------------
@@ -4136,6 +4202,8 @@ void TestI2CSpeeds(uint8_t clock)
 
 uint8_t txbuffer[32];
 circular_buffer_t txbuf;
+uint8_t rxbuffer[64];
+circular_buffer_t rxbuf;
 
 void main(void)
 {
@@ -4169,8 +4237,10 @@ void main(void)
     Tim1_ConfigPWM();
     Gpio_Config();
     CircBuf_Init(&txbuf, txbuffer, 32);
-    Uart2_Init(&txbuf, NULL);
+    CircBuf_Init(&rxbuf, rxbuffer, 64);
     Uart2_Config9600_8N1();
+    Uart2_Init(&txbuf, &rxbuf);
+    Uart2_EnableRxInterrupts();
     OutputInit(&Uart2_BlockingSendByte);
 
     enableInterrupts();
@@ -4183,12 +4253,12 @@ void main(void)
 
 #ifdef SQUARER
     //TestI2CSpeeds(20);
-    //TestI2CSpeeds(16);
+    TestI2CSpeeds(16);
     //TestI2CSpeeds(10);
     //TestI2CSpeeds(8);
     //TestI2CSpeeds(1);
 
-    I2C_Init(I2C_SPEED_STANDARD, 16, 0x50, 0);
+    I2C_Init(I2C_SPEED_STANDARD, 16, 160, 0);   //160=50Khz
     I2C_ConfigStdModeMaster();
 #endif
 
@@ -4201,17 +4271,47 @@ void main(void)
             static int counter;
             if (!I2C_BusBusy())
             {
+                bool fail = false;
                 OutputText("I2C kicked %d\r\n", ++counter);
                 if (!I2C_Start())
                 {
+                    fail = true;
                     OutputText("Start failed SR1=%x SR2=%x SR3=%x\r\n", I2C->SR1, I2C->SR2, I2C->SR3);
                 }
-                else
+                if (!fail)
                 {
-                    I2C_SendAddress(0x40, I2C_DIRECTION_WRITE);
-                    I2C_SendData(0xFF);
-                    I2C_Stop();
+                    if (!I2C_SendAddress(0x40, I2C_DIRECTION_WRITE))
+                    {
+                        fail = true;
+                        OutputText("Address failed\r\n");
+                    }
                 }
+                if (!fail)
+                {
+                    if (!I2C_SendData(0xAA))
+                    {
+                        fail = true;
+                        OutputText("Data failed\r\n");
+                    }
+                }
+                if (!fail)
+                {
+                    if (!I2C_Stop())
+                    {
+                        fail = true;
+                        OutputText("Stop failed\r\n");
+                    }
+                }
+                if (fail)
+                {
+                    I2C_SoftwareReset();
+                    OutputText("I2C reset\r\n");
+                }
+            }
+            else
+            {
+                I2C_SoftwareReset();
+                OutputText("I2C busy %d\r\n", ++counter);
             }
         }
 #endif // SQUARER
@@ -4283,18 +4383,27 @@ void main(void)
 
         // Output a message using interrupts and a circular buffer
 #ifdef SERIALIZER
-        if (Systick_Timeout(&transmitter, 1))
         {
+            uint8_t byte = 0;
             static uint32_t i = 0;
 
-            OutputText("%08lx\r", i);
             ++i;
-            //OutputString("The quick brown fox jumps over the lazy dog Pack my box with five dozen liquor jugs 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz\r\n");
-        }
+            if (Uart2_ReceiveByte(&byte))
+            {
+                OutputChar(byte);
+            }
+            if (Systick_Timeout(&transmitter, 100))
+            {
 
+                //OutputText("SR=%02x CR2=%02x Buf=%d ", UART2->SR, UART2->CR2, CircBuf_Used(rx2_cirbuf));
+                //OutputText("\r\n");
+                OutputText("%08lx\r", i);
+                //OutputString("The quick brown fox jumps over the lazy dog Pack my box with five dozen liquor jugs 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz\r\n");
+            }
+        }
         // Indicate via the brightness of the LED, the amount of buffer space in use
 #ifndef FADER
-        Tim1_SetCounter((TIM1_PERIOD * 100) /  CircBuf_PercentUsed(&tx_cirbuf));
+        //Tim1_SetCounter((TIM1_PERIOD * 100) /  CircBuf_PercentUsed(&tx_buf));
 #endif // FADER
 #endif // SERIALIZER
     }
