@@ -334,6 +334,143 @@ typedef struct
 
 
 //=============================================================================
+// Interrupt Controller
+//
+typedef struct
+{
+    __IO uint8_t SPR1;  // Software Priority Register 1
+    __IO uint8_t SPR2;  // Software Priority Register 2
+    __IO uint8_t SPR3;  // Software Priority Register 3
+    __IO uint8_t SPR4;  // Software Priority Register 4
+    __IO uint8_t SPR5;  // Software Priority Register 5
+    __IO uint8_t SPR6;  // Software Priority Register 6
+    __IO uint8_t SPR7;  // Software Priority Register 7
+    __IO uint8_t SPR8;  // Software Priority Register 8
+} stm8_itc_t;
+
+#define ITC_BaseAddress                 0x7F70
+#define ITC                             ((stm8_itc_t *)ITC_BaseAddress)
+
+#define ITC_SPR1_VECT0_MASK             ((uint8_t)0x03)     // Vector 0x8008
+#define ITC_SPR1_VECT0_SHIFT            0
+#define ITC_SPR1_VECT1_MASK             ((uint8_t)0x0C)     // Vector 0x800C
+#define ITC_SPR1_VECT1_SHIFT            2
+#define ITC_SPR1_VECT2_MASK             ((uint8_t)0x30)
+#define ITC_SPR1_VECT2_SHIFT            4
+#define ITC_SPR1_VECT3_MASK             ((uint8_t)0xC0)
+#define ITC_SPR1_VECT3_SHIFT            6
+#define ITC_SPR2_VECT4_MASK             ((uint8_t)0x03)
+#define ITC_SPR1_VECT4_SHIFT            0
+#define ITC_SPR2_VECT5_MASK             ((uint8_t)0x0C)
+#define ITC_SPR1_VECT5_SHIFT            2
+#define ITC_SPR2_VECT6_MASK             ((uint8_t)0x30)
+#define ITC_SPR1_VECT6_SHIFT            4
+#define ITC_SPR2_VECT7_MASK             ((uint8_t)0xC0)
+#define ITC_SPR1_VECT7_SHIFT            6
+#define ITC_SPR3_VECT8_MASK             ((uint8_t)0x03)
+#define ITC_SPR1_VECT8_SHIFT            0
+#define ITC_SPR3_VECT9_MASK             ((uint8_t)0x0C)
+#define ITC_SPR1_VECT9_SHIFT            2
+#define ITC_SPR3_VECT10_MASK            ((uint8_t)0x30)
+#define ITC_SPR1_VECT10_SHIFT           4
+#define ITC_SPR3_VECT11_MASK            ((uint8_t)0xC0)
+#define ITC_SPR1_VECT11_SHIFT           6
+#define ITC_SPR4_VECT12_MASK            ((uint8_t)0x03)
+#define ITC_SPR1_VECT12_SHIFT           0
+#define ITC_SPR4_VECT13_MASK            ((uint8_t)0x0C)
+#define ITC_SPR1_VECT13_SHIFT           2
+#define ITC_SPR4_VECT14_MASK            ((uint8_t)0x30)
+#define ITC_SPR1_VECT14_SHIFT           4
+#define ITC_SPR4_VECT15_MASK            ((uint8_t)0xC0)
+#define ITC_SPR1_VECT15_SHIFT           6
+#define ITC_SPR5_VECT16_MASK            ((uint8_t)0x03)
+#define ITC_SPR1_VECT16_SHIFT           0
+#define ITC_SPR5_VECT17_MASK            ((uint8_t)0x0C)
+#define ITC_SPR1_VECT17_SHIFT           2
+#define ITC_SPR5_VECT18_MASK            ((uint8_t)0x30)
+#define ITC_SPR1_VECT18_SHIFT           4
+#define ITC_SPR5_VECT19_MASK            ((uint8_t)0xC0)
+#define ITC_SPR1_VECT19_SHIFT           6
+#define ITC_SPR6_VECT20_MASK            ((uint8_t)0x03)
+#define ITC_SPR1_VECT20_SHIFT           0
+#define ITC_SPR6_VECT21_MASK            ((uint8_t)0x0C)
+#define ITC_SPR1_VECT21_SHIFT           2
+#define ITC_SPR6_VECT22_MASK            ((uint8_t)0x30)
+#define ITC_SPR1_VECT22_SHIFT           4
+#define ITC_SPR6_VECT23_MASK            ((uint8_t)0xC0)
+#define ITC_SPR1_VECT23_SHIFT           6
+#define ITC_SPR7_VECT24_MASK            ((uint8_t)0x03)
+#define ITC_SPR1_VECT24_SHIFT           0
+#define ITC_SPR7_VECT25_MASK            ((uint8_t)0x0C)
+#define ITC_SPR1_VECT25_SHIFT           2
+#define ITC_SPR7_VECT26_MASK            ((uint8_t)0x30)
+#define ITC_SPR1_VECT26_SHIFT           4
+#define ITC_SPR7_VECT27_MASK            ((uint8_t)0xC0)
+#define ITC_SPR1_VECT27_SHIFT           6
+#define ITC_SPR8_VECT28_MASK            ((uint8_t)0x03)
+#define ITC_SPR1_VECT28_SHIFT           0
+#define ITC_SPR8_VECT29_MASK            ((uint8_t)0x0C)     // Vector 0x807C
+#define ITC_SPR1_VECT29_SHIFT           2
+
+#define ITC_SPR_MASK                    ((uint8_t)0x03)
+#define ITC_SPR_VECTx_SHIFT(x)          (((uint8_t)(x) & ITC_SPR_MASK) * 2)
+#define ITC_SPR_VECTx_MASK(x)           ((ITC_SPR_MASK << ITC_SPR_VECTx_SHIFT(x)))                      // Vector within a SPR register
+#define ITC_SPRx(x)                     (uint8_t *)((ITC_BaseAddress + (((uint8_t)(x) >> 2) & 0x07)))   // SPR register for a vector
+
+#define ITC_SPR_LEVEL0                  ((uint8_t)0x02)     // Lowest
+#define ITC_SPR_LEVEL1                  ((uint8_t)0x01)     //
+#define ITC_SPR_LEVEL2                  ((uint8_t)0x00)     //
+#define ITC_SPR_LEVEL3                  ((uint8_t)0x03)     // Highest
+
+// Two bits in the CPU CC register that indicate current interrupt priority
+#define ITC_CC_I0_MASK                  ((uint8_t)0x08)
+#define ITC_CC_I0_SHIFT                 3
+#define ITC_CC_I1_MASK                  ((uint8_t)0x20)
+#define ITC_CC_I1_SHIFT                 5
+
+//=============================================================================
+// External Interrupts
+//
+typedef struct
+{
+    __IO uint8_t CR1;   // Control Register 1
+    __IO uint8_t CR2;   // Control Register 2
+} stm8_exti_t;
+
+#define EXTI_BaseAddress                0x50A0
+#define EXTI                            ((stm8_exti_t *)EXTI_BaseAddress)
+
+#define EXTI_PAIS_MASK                  0x03    // Port A Interupt Sensitivity
+#define EXTI_PAIS_SHIFT                 0
+#define EXTI_PBIS_MASK                  0x0C    // Port B Interupt Sensitivity
+#define EXTI_PBIS_SHIFT                 2
+#define EXTI_PCIS_MASK                  0x30    // Port C Interupt Sensitivity
+#define EXTI_PCIS_SHIFT                 4
+#define EXTI_PDIS_MASK                  0xC0    // Port D Interupt Sensitivity
+#define EXTI_PDIS_SHIFT                 6
+#define EXTI_PEIS_MASK                  0x03    // Port E Interupt Sensitivity
+#define EXTI_PEIS_SHIFT                 0
+#define EXTI_TLIS_MASK                  0x04    // Top Level Interupt Sensitivity
+#define EXTI_TLIS_SHIFT                 2
+
+#define EXTI_PAIS                       0
+#define EXTI_PBIS                       1
+#define EXTI_PCIS                       2
+#define EXTI_PDIS                       3
+#define EXTI_PEIS                       4
+#define EXTI_Pn_IS_MASK                 0x03
+#define EXTI_Pn_ISx(x)                  (EXTI_Pn_IS_MASK << ((x & 0x03) * 2))
+#define EXTI_Px(x)                      ((EXTI)((EXTI_BaseAddress + ((x >> 2) & 0x07))))
+
+#define EXTI_PxIS_FALLING_LOW           0x00
+#define EXTI_PxIS_RISING                0x01
+#define EXTI_PxIS_FALLING               0x02
+#define EXTI_PxIS_RISING_FALLING        0x03
+
+#define EXTI_TLIS_FALLING               0x00
+#define EXTI_TLIS_RISING                0x01
+
+//=============================================================================
 // General Purpose Input/Output
 //
 typedef struct
@@ -1940,6 +2077,130 @@ void SysClock_HSE(void)
 uint32_t SysClock_GetClockFreq(void)
 {
     return sysclock;
+}
+
+//=============================================================================
+// Interrupt Controller functions
+//
+typedef enum
+{
+    IRQ_LEVEL_0 = ITC_SPR_LEVEL0,
+    IRQ_LEVEL_1 = ITC_SPR_LEVEL1,
+    IRQ_LEVEL_2 = ITC_SPR_LEVEL2,
+    IRQ_LEVEL_3 = ITC_SPR_LEVEL3
+} irq_priority_level_t;
+
+typedef enum {
+    IRQ_SOURCE_TLI            = (uint8_t)0,   // Software interrupt
+    IRQ_SOURCE_AWU            = (uint8_t)1,   // Auto wake up from halt interrupt
+    IRQ_SOURCE_CLK            = (uint8_t)2,   // Clock controller interrupt
+    IRQ_SOURCE_PORTA          = (uint8_t)3,   // Port A external interrupts
+    IRQ_SOURCE_PORTB          = (uint8_t)4,   // Port B external interrupts
+    IRQ_SOURCE_PORTC          = (uint8_t)5,   // Port C external interrupts
+    IRQ_SOURCE_PORTD          = (uint8_t)6,   // Port D external interrupts
+    IRQ_SOURCE_PORTE          = (uint8_t)7,   // Port E external interrupts
+
+#if defined(STM8S208) || defined(STM8AF52Ax)
+    IRQ_SOURCE_CAN_RX         = (uint8_t)8,   // beCAN RX interrupt
+    IRQ_SOURCE_CAN_TX         = (uint8_t)9,   // beCAN TX/ER/SC interrupt
+#endif  // STM8S208 or STM8AF52Ax
+
+#if defined(STM8S903) || defined(STM8AF622x)
+    IRQ_SOURCE_PORTF          = (uint8_t)8,   // Port F external interrupts
+#endif  // STM8S903 or STM8AF622x
+
+    IRQ_SOURCE_SPI            = (uint8_t)10,  // SPI interrupt
+    IRQ_SOURCE_TIM1_OVF       = (uint8_t)11,  // TIM1 update/overflow/underflow/trigger/break interrupt
+    IRQ_SOURCE_TIM1_CAPCOM    = (uint8_t)12,  // TIM1 capture/compare interrupt
+
+#if defined(STM8S903) || defined(STM8AF622x)
+    IRQ_SOURCE_TIM5_OVFTRI    = (uint8_t)13,  // TIM5 update/overflow/underflow/trigger/interrupt
+    IRQ_SOURCE_TIM5_CAPCOM    = (uint8_t)14,  // TIM5 capture/compare interrupt
+#else
+    IRQ_SOURCE_TIM2_OVF       = (uint8_t)13,  // TIM2 update /overflow interrupt
+    IRQ_SOURCE_TIM2_CAPCOM    = (uint8_t)14,  // TIM2 capture/compare interrupt
+#endif  // STM8S903 or STM8AF622x
+
+    IRQ_SOURCE_TIM3_OVF       = (uint8_t)15,  // TIM3 update /overflow interrupt
+    IRQ_SOURCE_TIM3_CAPCOM    = (uint8_t)16,  // TIM3 update /overflow interrupt
+
+#if defined(STM8S208) ||defined(STM8S207) || defined (STM8S007) || defined(STM8S103) || \
+    defined(STM8S003) ||defined(STM8S903) || defined (STM8AF52Ax) || defined (STM8AF62Ax)
+    IRQ_SOURCE_UART1_TX       = (uint8_t)17,  // UART1 TX interrupt
+    IRQ_SOURCE_UART1_RX       = (uint8_t)18,  // UART1 RX interrupt
+#endif  // STM8S208 or STM8S207 or STM8S007 or STM8S103 or STM8S003 or STM8S903 or STM8AF52Ax or STM8AF62Ax
+#if defined(STM8AF622x)
+    IRQ_SOURCE_UART4_TX       = (uint8_t)17,  // UART4 TX interrupt
+    IRQ_SOURCE_UART4_RX       = (uint8_t)18,  // UART4 RX interrupt
+#endif  // STM8AF622x
+
+    IRQ_SOURCE_I2C            = (uint8_t)19,  // I2C interrupt
+
+#if defined(STM8S105) || defined(STM8S005) || defined(STM8AF626x)
+    IRQ_SOURCE_UART2_TX       = (uint8_t)20,  // USART2 TX interrupt
+    IRQ_SOURCE_UART2_RX       = (uint8_t)21,  // USART2 RX interrupt
+#endif  // STM8S105 or STM8AF626x
+
+#if defined(STM8S208) || defined(STM8S207) || defined(STM8S007) || defined(STM8AF52Ax) || defined(STM8AF62Ax)
+    IRQ_SOURCE_UART3_TX       = (uint8_t)20,  // USART3 TX interrupt
+    IRQ_SOURCE_UART3_RX       = (uint8_t)21,  // USART3 RX interrupt
+    IRQ_SOURCE_ADC2           = (uint8_t)22,  // ADC2 interrupt
+#endif  // STM8S208 or STM8S207 or STM8AF52Ax or STM8AF62Ax
+
+#if defined(STM8S105) || defined(STM8S005) || defined(STM8S103) || defined(STM8S003) ||  defined(STM8S903) || defined(STM8AF626x) || defined(STM8AF622x)
+    IRQ_SOURCE_ADC1           = (uint8_t)22,  // ADC2 interrupt
+#endif  // STM8S105 or STM8S005 or STM8S003 or STM8S103 or STM8S903 or STM8AF626x or STM8AF622x
+
+#if defined(STM8S903) || defined(STM8AF622x)
+    IRQ_SOURCE_TIM6_OVFTRI    = (uint8_t)23,  // TIM6 update/overflow/underflow/trigger/interrupt
+#else
+    IRQ_SOURCE_TIM4_OVF       = (uint8_t)23,  // TIM4 update /overflow interrupt
+#endif  // STM8S903 or STM8AF622x
+
+    IRQ_SOURCE_EEPROM_EEC     = (uint8_t)24  // Flash interrupt
+} irq_source_t;
+
+//-----------------------------------------------------------------------------
+// Return condition code register
+//
+// Required to be a function as it returns a value in the A register.
+// Ignore compiler warnings, the returned value is in A register
+//
+static uint8_t GetCPUCCRegister(void)
+{
+#if defined __IAR_SYSTEMS_ICC__
+    asm("push cc");
+    asm("pop a");
+#elif defined _COSMIC_
+    _asm("push cc");
+    _asm("pop a");
+    return;
+#elif defined _RAISONANCE_
+    return _getCC_();
+#else // __SDCC__
+    __asm push cc __endasm;
+    __asm pop a __endasm;
+#endif
+}
+
+//-----------------------------------------------------------------------------
+// Return the status of interrupt bits in CPU condition code register
+//
+// Value in CC register are in bits 3 & 5, returned value is as number between
+// 0 and 3. See also ITC_SPR_LEVEL0-3
+//
+irq_priority_level_t ITC_GetCurrentPriority(void)
+{
+    uint8_t cc = GetCPUCCRegister();
+    return (((cc & ITC_CC_I1_MASK) >> ITC_CC_I1_SHIFT) << 1) |
+            ((cc & ITC_CC_I0_MASK) >> ITC_CC_I0_SHIFT);
+}
+
+irq_priority_level_t ITC_GetIRQPriority(irq_source_t irq)
+{
+    uint8_t mask = ITC_SPR_VECTx_MASK(irq);
+    uint8_t shift = ITC_SPR_VECTx_SHIFT(irq);
+    return (*ITC_SPRx(irq) & ITC_SPR_VECTx_MASK(irq)) >> ITC_SPR_VECTx_SHIFT(irq);
 }
 
 //=============================================================================
