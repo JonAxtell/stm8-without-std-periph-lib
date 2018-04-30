@@ -45,7 +45,7 @@
 //#define FADER
 #define SERIALIZER
 //#define BEEPER
-#define SQUARER
+//#define SQUARER
 
 // Some basic macros to make life easy when using different compilers
 #if defined __IAR_SYSTEMS_ICC__
@@ -414,7 +414,7 @@ typedef struct
 
 #define ITC_SPR_MASK                    ((uint8_t)0x03)
 #define ITC_SPR_VECTx_SHIFT(x)          (((uint8_t)(x) & ITC_SPR_MASK) * 2)
-#define ITC_SPR_VECTx_MASK(x)           ((ITC_SPR_MASK << ITC_SPR_VECTx_SHIFT(x)))                      // Vector within a SPR register
+#define ITC_SPR_VECTx_MASK(x)           (ITC_SPR_MASK << ITC_SPR_VECTx_SHIFT(x))                        // Vector within a SPR register
 #define ITC_SPRx(x)                     (uint8_t *)((ITC_BaseAddress + (((uint8_t)(x) >> 2) & 0x07)))   // SPR register for a vector
 
 #define ITC_SPR_LEVEL0                  ((uint8_t)0x02)     // Lowest
@@ -458,17 +458,17 @@ typedef struct
 #define EXTI_PCIS                       2
 #define EXTI_PDIS                       3
 #define EXTI_PEIS                       4
-#define EXTI_Pn_IS_MASK                 0x03
-#define EXTI_Pn_ISx(x)                  (EXTI_Pn_IS_MASK << ((x & 0x03) * 2))
-#define EXTI_Px(x)                      ((EXTI)((EXTI_BaseAddress + ((x >> 2) & 0x07))))
-
+#define EXTI_TLIS                       5       // Special case
+#define EXTI_MASK                       0x07
 #define EXTI_PxIS_FALLING_LOW           0x00
 #define EXTI_PxIS_RISING                0x01
-#define EXTI_PxIS_FALLING               0x02
-#define EXTI_PxIS_RISING_FALLING        0x03
+#define EXTI_PxIS_FALLING               0x02    // Not used for TLI
+#define EXTI_PxIS_RISING_FALLING        0x03    // Not used for TLI
+#define EXTI_PxIS_MASK                  0x03
+#define EXTI_Px_IS_SHIFT(x)             (((uint8_t)(x) & 0x03) * 2)
+#define EXTI_Px_IS_MASK(x)              (EXTI_PxIS_MASK << EXTI_Px_IS_SHIFT(x))                           // Port within EXTI register
+#define EXTI_Px(x)                      ((uint8_t *)(EXTI_BaseAddress + (((uint8_t)(x) & EXTI_MASK) >> 2)))   // EXTI register for a port
 
-#define EXTI_TLIS_FALLING               0x00
-#define EXTI_TLIS_RISING                0x01
 
 //=============================================================================
 // General Purpose Input/Output
@@ -2166,6 +2166,15 @@ typedef enum {
 // Required to be a function as it returns a value in the A register.
 // Ignore compiler warnings, the returned value is in A register
 //
+#if defined __IAR_SYSTEMS_ICC__
+// TODO: Insert pragma to ignore warning here
+#elif defined _COSMIC_
+// TODO: Insert pragma to ignore warning here
+#elif defined _RAISONANCE_
+// TODO: Insert pragma to ignore warning here
+#else // __SDCC__
+// TODO: Insert pragma to ignore warning here
+#endif
 static uint8_t GetCPUCCRegister(void)
 {
 #if defined __IAR_SYSTEMS_ICC__
@@ -2174,7 +2183,6 @@ static uint8_t GetCPUCCRegister(void)
 #elif defined _COSMIC_
     _asm("push cc");
     _asm("pop a");
-    return;
 #elif defined _RAISONANCE_
     return _getCC_();
 #else // __SDCC__
@@ -2196,11 +2204,96 @@ irq_priority_level_t ITC_GetCurrentPriority(void)
             ((cc & ITC_CC_I0_MASK) >> ITC_CC_I0_SHIFT);
 }
 
+//-----------------------------------------------------------------------------
+// Return the priority of an interrupt source
+//
+// See ITC_SPR_LEVEL0-3
+//
 irq_priority_level_t ITC_GetIRQPriority(irq_source_t irq)
 {
     uint8_t mask = ITC_SPR_VECTx_MASK(irq);
     uint8_t shift = ITC_SPR_VECTx_SHIFT(irq);
     return (*ITC_SPRx(irq) & ITC_SPR_VECTx_MASK(irq)) >> ITC_SPR_VECTx_SHIFT(irq);
+}
+
+//-----------------------------------------------------------------------------
+// Set the priority of an interrupt source
+//
+// See ITC_SPR_LEVEL0-3
+//
+// Note: Changing the priority is only possible when the interrupt is disabled.
+//       Priority level 0 cannot be set
+//
+void ITC_SetIRQPriority(irq_source_t irq, irq_priority_level_t pri)
+{
+    uint8_t mask = ITC_SPR_VECTx_MASK(irq);
+    uint8_t shift = ITC_SPR_VECTx_SHIFT(irq);
+    *ITC_SPRx(irq) = (*ITC_SPRx(irq) & ~ITC_SPR_VECTx_MASK(irq)) | (pri << ITC_SPR_VECTx_SHIFT(irq));
+}
+
+typedef enum
+{
+    EXTI_PORT_A = EXTI_PAIS,
+    EXTI_PORT_B = EXTI_PBIS,
+    EXTI_PORT_C = EXTI_PCIS,
+    EXTI_PORT_D = EXTI_PDIS,
+    EXTI_PORT_E = EXTI_PEIS,
+    EXTI_TL     = EXTI_TLIS
+} exti_port_t;
+
+typedef enum
+{
+    EXTI_TYPE_FALLING_LOW    = EXTI_PxIS_FALLING_LOW,
+    EXTI_TYPE_RISING         = EXTI_PxIS_RISING,
+    EXTI_TYPE_FALLING        = EXTI_PxIS_FALLING,
+    EXTI_TYPE_RISING_FALLING = EXTI_PxIS_RISING_FALLING
+} exti_type_t;
+
+//-----------------------------------------------------------------------------
+// Get the interrupt type of an external interrupt on a port
+//
+exti_type_t EXTI_GetIRQType(exti_port_t port)
+{
+    return (*EXTI_Px(port) & EXTI_Px_IS_MASK(port)) >> EXTI_Px_IS_SHIFT(port);
+}
+
+//-----------------------------------------------------------------------------
+// Set the interrupt type of an external interrupt on a port
+//
+void EXTI_SetIRQType(exti_port_t port, exti_type_t type)
+{
+    *EXTI_Px(port) = (*EXTI_Px(port) & ~EXTI_Px_IS_MASK(port)) | (type << EXTI_Px_IS_SHIFT(port));
+}
+/*
+    IRQ_SOURCE_PORTA          = (uint8_t)3,   // Port A external interrupts
+    IRQ_SOURCE_PORTB          = (uint8_t)4,   // Port B external interrupts
+    IRQ_SOURCE_PORTC          = (uint8_t)5,   // Port C external interrupts
+    IRQ_SOURCE_PORTD          = (uint8_t)6,   // Port D external interrupts
+    IRQ_SOURCE_PORTE          = (uint8_t)7,   // Port E external interrupts
+*/
+void EXTI_portA_ISR(void) __interrupt(IRQ_SOURCE_PORTA)
+{
+
+}
+
+void EXTI_portB_ISR(void) __interrupt(IRQ_SOURCE_PORTB)
+{
+
+}
+
+void EXTI_portC_ISR(void) __interrupt(IRQ_SOURCE_PORTC)
+{
+
+}
+
+void EXTI_portD_ISR(void) __interrupt(IRQ_SOURCE_PORTD)
+{
+
+}
+
+void EXTI_portE_ISR(void) __interrupt(IRQ_SOURCE_PORTE)
+{
+
 }
 
 //=============================================================================
@@ -2304,6 +2397,22 @@ void Uart2_Config9600_8N1(void)
     UART2->CR1 = (UART2->CR1 & ~UARTx_CR1_PCEN_MASK) | UARTx_CR1_PCEN_DISABLE;
     UART2->CR3 = (UART2->CR3 & ~UARTx_CR3_STOP_MASK) | UARTx_CR3_STOP_1BIT;
     Uart_CalcBRR(9600, &UART2->BRR1, &UART2->BRR2);
+    UART2->CR3 = (UART2->CR3 & ~UARTx_CR3_CLKEN_MASK) | UARTx_CR3_CLKEN_DISABLE;
+    UART2->CR2 = (UART2->CR2 & ~(UARTx_CR2_TEN_MASK | UARTx_CR2_REN_MASK)) | UARTx_CR2_TEN_ENABLE | UARTx_CR2_REN_ENABLE;
+}
+
+//-----------------------------------------------------------------------------
+// Configure uart2 with most common protocol settings
+//
+// Rx and TX at 115200 baud, 8 databits, no parity, 1 stop bit
+//
+void Uart2_Config115200_8N1(void)
+{
+    UART2->CR2 = (UART2->CR2 & ~(UARTx_CR2_TEN_MASK | UARTx_CR2_REN_MASK)) | UARTx_CR2_TEN_DISABLE | UARTx_CR2_REN_DISABLE;
+    UART2->CR1 = (UART2->CR1 & ~UARTx_CR1_M_MASK) | UARTx_CR1_M_8BIT;
+    UART2->CR1 = (UART2->CR1 & ~UARTx_CR1_PCEN_MASK) | UARTx_CR1_PCEN_DISABLE;
+    UART2->CR3 = (UART2->CR3 & ~UARTx_CR3_STOP_MASK) | UARTx_CR3_STOP_1BIT;
+    Uart_CalcBRR(115200, &UART2->BRR1, &UART2->BRR2);
     UART2->CR3 = (UART2->CR3 & ~UARTx_CR3_CLKEN_MASK) | UARTx_CR3_CLKEN_DISABLE;
     UART2->CR2 = (UART2->CR2 & ~(UARTx_CR2_TEN_MASK | UARTx_CR2_REN_MASK)) | UARTx_CR2_TEN_ENABLE | UARTx_CR2_REN_ENABLE;
 }
@@ -2505,7 +2614,7 @@ void OutputString(const char *str)
 //-----------------------------------------------------------------------------
 // Output an unsigned integer in decimal
 //
-void OutputUInt32(uint32_t i)
+void OutputUnsignedDecimal(uint32_t i)
 {
     uint32_t div = 1000000000;
     bool zero = true;
@@ -2540,14 +2649,14 @@ void OutputUInt32(uint32_t i)
 //-----------------------------------------------------------------------------
 // Output an signed integer in decoimal
 //
-void OutputInt32(int32_t i)
+void OutputSignedDecimal(int32_t i)
 {
     if (i < 0)
     {
         OutputByteFunc('-');
         i = -i;
     }
-    OutputUInt32(i);
+    OutputUnsignedDecimal(i);
 }
 
 //-----------------------------------------------------------------------------
@@ -2564,7 +2673,7 @@ void OutputHex(uint32_t h, int width)
 }
 
 //-----------------------------------------------------------------------------
-// Convert integer to string
+// Convert integer to a string
 //
 void UintToString(uint32_t value, char* string, unsigned char radix)
 {
@@ -2606,12 +2715,17 @@ uint16_t StringLength(const char *str)
     return i;
 }
 
+//-----------------------------------------------------------------------------
+// Printf style output
+//
+// NOTE: Output od decimal integers doesn't work at the moment
+//
 uint16_t OutputText(const char *format, ... )
 {
     va_list ap;
     union
     {
-        uint8_t b[5];
+        uint8_t b[5];           // 5th byte holds sign?
         int32_t l;
         uint32_t ul;
         const char *p;
@@ -4499,7 +4613,7 @@ void main(void)
     Gpio_Config();
     CircBuf_Init(&txbuf, txbuffer, 32);
     CircBuf_Init(&rxbuf, rxbuffer, 64);
-    Uart2_Config9600_8N1();
+    Uart2_Config115200_8N1();
     Uart2_Init(&txbuf, &rxbuf);
     Uart2_EnableRxInterrupts();
     OutputInit(&Uart2_BlockingSendByte);
@@ -4523,6 +4637,7 @@ void main(void)
     I2C_ConfigStdModeMaster();
 #endif
 
+    OutputChar('\r');
     for (;;)
     {
         // Do I2C stuff
@@ -4647,18 +4762,25 @@ void main(void)
         {
             uint8_t byte = 0;
             static uint32_t i = 0;
+            static char buffer[32];
 
-            ++i;
             if (Uart2_ReceiveByte(&byte))
             {
                 OutputChar(byte);
             }
             if (Systick_Timeout(&transmitter, 100))
             {
+                ++i;
 
                 //OutputText("SR=%02x CR2=%02x Buf=%d ", UART2->SR, UART2->CR2, CircBuf_Used(rx2_cirbuf));
                 //OutputText("\r\n");
-                OutputText("%08lx\r", i);
+                //OutputText("%08lx", i);
+                //OutputText("%d", i);
+                //OutputUnsignedDecimal(i);
+                UintToString(i, buffer, 10);
+                OutputString(buffer);
+                OutputChar('\r');
+
                 //OutputString("The quick brown fox jumps over the lazy dog Pack my box with five dozen liquor jugs 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz\r\n");
             }
         }
